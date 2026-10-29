@@ -77,9 +77,11 @@ jobs:
             set -e
             git clone -q --depth 1 https://github.com/opnsense/plugins /tmp/plugins
             cp -R plugin/sysutils/apufirmware /tmp/plugins/sysutils/
-            make -C /tmp/plugins/sysutils/apufirmware package \
+            # PLUGIN_DEVEL vide : sinon la branche master d'opnsense/plugins produit os-apufirmware-devel
+            make -C /tmp/plugins/sysutils/apufirmware package PLUGIN_DEVEL= \
               PLUGIN_VERSION="$VERSION" PLUGIN_HASH="$(echo "$HASH" | cut -c1-10)" PKGDIR="$PWD/dist"
             pkg info -F dist/*.pkg
+            [ "$(pkg query -F dist/*.pkg %n)" = os-apufirmware ] || { echo 'nom de paquet inattendu'; exit 1; }
             pkg query -F dist/*.pkg 'abi: %q' | grep -qi 'freebsd:\*:\*' || { echo 'paquet lié à une ABI'; exit 1; }
 
       - uses: actions/upload-artifact@v7
