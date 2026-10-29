@@ -71,11 +71,20 @@ use a fine-grained token limited to that repository with **Contents: Read-only**
 
 ### Plugin versions
 
-Every merge to `main` that changes `plugin/sysutils/` builds the package in a FreeBSD VM and
-publishes a `plugin-vX.Y.Z` release. `X.Y` comes from `PLUGIN_VERSION` in the plugin `Makefile`
-(bump it by hand for notable changes), `Z` is incremented automatically. These releases never
-install anything by themselves, and the firmware is never flashed without a click in the web
-interface.
+Plugin versions are managed by [release-please](https://github.com/googleapis/release-please).
+PR titles follow [Conventional Commits](https://www.conventionalcommits.org/) (a required check
+enforces it), and squash merges use them as commit messages. release-please keeps a release PR
+open that groups the plugin changes merged since the last release: `fix` bumps the patch version,
+`feat` the minor version, `!` (breaking change) the major version. Merging that PR updates the
+changelog and `PLUGIN_VERSION`, tags `plugin-vX.Y.Z` and publishes the release, then the package
+is built in a FreeBSD VM and attached to it.
+
+The release PR is opened with the `RELEASE_PLEASE_TOKEN` secret, a fine-grained personal access
+token for this repository only with **Contents** and **Pull requests** in read and write: a PR
+opened with the default Actions token would not run the required checks.
+
+These releases never install anything by themselves, and the firmware is never flashed without a
+click in the web interface.
 
 ## Updating the firmware
 
