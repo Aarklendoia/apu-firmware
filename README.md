@@ -88,6 +88,8 @@ click in the web interface.
 
 ## Updating the firmware
 
+![APU coreboot page in OPNsense: apu4 running Dasharo UEFI v0.9.0, update to 0.9.1 available](docs/plugin-page.png)
+
 1. A notification appears in the bell when a new version is published.
 2. *APU coreboot* page → **Update firmware**. The log scrolls during the operation (~1 minute).
 3. **Cold reset**: services are stopped cleanly, then the board is powered off for a few seconds
@@ -97,24 +99,42 @@ What the plugin does, in order (any failure before step 4 leaves the flash untou
 1. download from the release, sha256 verification;
 2. backup of the current flash to `/var/db/apufirmware/backup/` (last 3 kept);
 3. checks: apu2/3/4/6 board detected, same variant as the installed firmware;
-4. `flashrom` write, then verification. From a Dasharo firmware, only the `COREBOOT` region is
-   written (boot order and settings are kept). From the original PC Engines firmware (v4.x), the
-   full image is written, as recommended by 3mdeb, and settings return to their defaults.
+4. write protection check (`flashrom --wp-status`), see below;
+5. `flashrom` write, then verification:
+   - Dasharo SeaBIOS: only the `COREBOOT` region (boot order and settings are kept);
+   - Dasharo UEFI: `WP_RO` and `RW_SECTION_A`, or `RW_SECTION_A` alone when `WP_RO` is write
+     protected;
+   - original PC Engines firmware (v4.x): the full image, as recommended by 3mdeb, and settings
+     return to their defaults.
+
+When flashrom finds several definitions for the flash chip (the W25Q64 of some apu4 boards matches
+two), the plugin passes the first one with `-c`: both describe the same chip.
+
+## Write protection
+
+Dasharo UEFI can keep its read-only part (`WP_RO`, the upper half of the flash) write protected.
+The read-only part then checks `RW_SECTION_A` with the keys stored in its GBB, so the plugin writes
+`RW_SECTION_A` alone, after checking that the new ROM has the same flash layout and the same GBB
+as the current flash. If the keys differ, or if the protection covers anything else (full image,
+SeaBIOS `COREBOOT` region), the plugin stops before writing: disable the protection first
+(sortbootorder **F10** menu on SeaBIOS, write-protect jumper).
+
+To see the protection from a shell: `flashrom -p internal --wp-status` (add
+`-c "W25Q64BV/W25Q64CV/W25Q64FV"` if flashrom asks for a chip definition).
 
 ## Before the first update
 
-- **F10** menu at boot (sortbootorder): firmware write protection must be disabled. This should be
-  the last time the serial console is needed.
-- The write-protect jumper (J3 on apu4) must not be fitted.
-- Keep a serial console at hand for this first time. Later updates can be done remotely.
+Keep a serial console at hand for the first update, to see the board boot the new firmware. Later
+updates can be done remotely.
 
 ## Troubleshooting
 
 - **Failure before writing** (download, sha256, write protection): nothing was changed, and the
   message says so.
 - **Failure while writing**: the message says **DO NOT REBOOT**. Retry the update, or restore the
-  backup over SSH:
+  backup over SSH (with `-c <chip>` if flashrom asks for one):
   `flashrom -p internal -w /var/db/apufirmware/backup/<file>.rom`
+  (with `WP_RO` write protected, restore only what was written: add `--fmap -i RW_SECTION_A`)
 - **The board no longer boots**: only an external SPI programmer (e.g. CH341A with a SOIC8 clip,
   or the PC Engines spi1a) can write the backup back.
 
@@ -126,7 +146,7 @@ The interface strings are in English, like the rest of OPNsense, and go through 
 ## Known limitations
 
 - Switching between SeaBIOS and UEFI is not supported from the interface (OPNsense must be
-  reinstalled in UEFI mode). Stay on SeaBIOS unless you have a specific need.
+  reinstalled in the other boot mode). Choose the variant that matches the installed firmware.
 - The plugin has been tested with a fake `flashrom` and a fake GitHub (`plugin/tests/`), not on
   real hardware before its first use.
 - `-unreleased` builds (*Pre-releases* option) come from branches that 3mdeb has not validated.
