@@ -1,0 +1,23 @@
+{
+    // Python : style OPNsense (guillemets simples), pas de formatage automatique
+    "[python]": {
+        "editor.defaultFormatter": null,
+        "editor.formatOnSave": false
+    },
+    "flake8.args": ["--max-line-length=120"],
+    "python.analysis.typeCheckingMode": "basic",
+    // ShellCheck
+    "shellcheck.customArgs": ["--severity=warning"],
+    // YAML
+    "yaml.schemas": {
+        "https://json.schemastore.org/github-workflow.json": ".github/workflows/*.yml"
+    },
+    "files.associations": {
+        "apu-fw": "shellscript",
+        "*.volt": "twig"
+    },
+    "files.exclude": {
+        "**/__pycache__": true,
+        "**/*.pyc": true
+    }
+}

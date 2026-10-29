@@ -10,7 +10,7 @@ jobs:
   lint-test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Syntaxe PHP
         run: find plugin -name '*.php' -o -name '*.inc' | xargs -n1 php -l
