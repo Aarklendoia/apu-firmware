@@ -81,12 +81,20 @@ def fake(name, body):
     os.chmod(p, 0o755)
 
 
-def hw(product, bios, flash_ok=True, write_fail=False, reg='580ffe00'):
+AMBIGUOUS = ('echo \'Multiple flash chip definitions match the detected chip(s): '
+             '"W25Q64BV/W25Q64CV/W25Q64FV", "W25Q64JV-.Q"\'; exit 1')
+
+
+def hw(product, bios, flash_ok=True, write_fail=False, reg='580ffe00', ambiguous=False):
     fake('kenv', 'case "$2" in smbios.system.product) echo "%s";; smbios.bios.version) echo "%s";; esac\n'
          % (product, bios))
+    # like flashrom on an apu4 W25Q64: without -c, it stops after probing
     fake('flashrom', 'echo "flashrom $*" >> %s/flashrom.calls\n'
-         'case "$*" in *" -r "*) %s;; *" -w "*) echo "Erasing and writing flash chip... "; %s;; esac\n'
-         % (ROOT, 'printf x > "$4"' if flash_ok else 'echo "write protected"; exit 1',
+         'case "$*" in *" -c "*) ;; *) %s;; esac\n'
+         'case "$*" in "-p internal") ;; *" -r "*) %s;;\n'
+         '  *" -w "*) echo "Erasing and writing flash chip... "; %s;; esac\n'
+         % (ROOT, AMBIGUOUS if ambiguous else ':',
+            'printf x > "$4"' if flash_ok else 'echo "write protected"; exit 1',
             'echo FAILED; exit 1' if write_fail else 'echo "Erase/write done."; echo "Verifying flash... VERIFIED."'))
     fake('pciconf', 'echo "pciconf $*" >> %s/pciconf.calls\n[ "$1" = "-r" ] && echo %s\nexit 0\n' % (ROOT, reg))
 
@@ -170,7 +178,8 @@ _, st = run('status')
 fl = calls('flashrom.calls')
 check('flash: exit 0', code == 0, open(env['APUFW_LOG']).read())
 check('flash: state flashed + cold reset needed', st['state'] == 'flashed' and st['needs_coldreset'], st)
-check('flash: backup taken first', fl.splitlines()[0].startswith('flashrom -p internal -r '), fl)
+rw = [line for line in fl.splitlines() if ' -r ' in line or ' -w ' in line]
+check('flash: backup taken first', rw[0].startswith('flashrom -p internal -r '), fl)
 check('flash: legacy -> full image (no --fmap)', '-w' in fl and '--fmap' not in fl, fl)
 check('flash: backup file exists', os.path.exists(st.get('last_backup', '')), st)
 check('flash: no update offered until reset', st['update_available'] is False, st)
@@ -189,6 +198,15 @@ hw('apu4', 'v24.05.00.01')
 run('check')
 code, _ = run('flash')
 check('dasharo: --fmap -i COREBOOT', '--fmap -i COREBOOT' in calls('flashrom.calls'), calls('flashrom.calls'))
+
+# 5b. several chip definitions match (apu4 W25Q64): -c on every read and write
+reset_state()
+hw('apu4', 'v24.05.00.01', ambiguous=True)
+code, _ = run('flash')
+fl = calls('flashrom.calls')
+check('ambiguous chip: flash succeeds', code == 0, open(env['APUFW_LOG']).read())
+check('ambiguous chip: -c on read and write',
+      all('-c W25Q64BV/W25Q64CV/W25Q64FV' in line for line in fl.splitlines() if ' -r ' in line or ' -w ' in line), fl)
 
 # 6. checksum mismatch -> nothing written
 reset_state()

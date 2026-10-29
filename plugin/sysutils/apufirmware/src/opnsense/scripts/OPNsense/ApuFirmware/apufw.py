@@ -150,6 +150,18 @@ def hardware():
     }
 
 
+def flashrom_chip():
+    """'-c' arguments when several flashrom chip definitions match the flash.
+
+    The W25Q64 of the apu4 matches both "W25Q64BV/W25Q64CV/W25Q64FV" and "W25Q64JV-.Q",
+    and flashrom then refuses to do anything without -c. Same chip ID: take the first one.
+    """
+    _, out = run(['flashrom', '-p', 'internal'], logged=True)
+    match = re.search(r'Multiple flash chip definitions match the detected chip\(s\): (.*)', out)
+    names = re.findall(r'"([^"]+)"', match.group(1)) if match else []
+    return ['-c', names[0]] if names else []
+
+
 def flash_plan(hw, variant):
     """Return (flashrom arguments, reason it is blocked or None)."""
     if not hw['board']:
@@ -380,7 +392,8 @@ def _flash():
     backup = os.path.join(BACKUP_DIR, '%s_%s_%s.rom' % (
         status['board'], status['bios_version'].replace(' ', '_') or 'unknown',
         time.strftime('%Y%m%d-%H%M%S')))
-    code, _ = run(['flashrom', '-p', 'internal', '-r', backup], logged=True)
+    chip = flashrom_chip()
+    code, _ = run(['flashrom', '-p', 'internal', '-r', backup] + chip, logged=True)
     if code != 0:
         return _fail(status, 'Backup failed, nothing was written. Is the firmware write protection disabled?')
     backups = sorted((os.path.join(BACKUP_DIR, b) for b in os.listdir(BACKUP_DIR)), key=os.path.getmtime)
@@ -390,7 +403,7 @@ def _flash():
 
     status['message'] = 'Writing %s' % rel['rom']['name']
     save_status(status)
-    code, out = run(['flashrom', '-p', 'internal', '-w', rom] + plan, logged=True)
+    code, out = run(['flashrom', '-p', 'internal', '-w', rom] + plan + chip, logged=True)
     if code != 0:
         if 'Erasing and writing flash chip' in out:
             return _fail(status, 'flashrom failed while writing. DO NOT REBOOT: retry the update, '
