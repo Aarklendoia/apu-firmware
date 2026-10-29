@@ -30,6 +30,11 @@ on:
         type: choice
         options: [am, guilt]
         default: am
+      mirrors:
+        description: Where submodules and payloads come from
+        type: choice
+        options: [github, upstream]
+        default: github
       publish:
         description: Publish a release (off = test build, ROM kept as a workflow artifact)
         type: boolean
@@ -112,6 +117,7 @@ jobs:
           BOARD: ${{ matrix.board }}
           VARIANT: ${{ needs.check.outputs.variant }}
           PATCH_TOOL: ${{ inputs.patch_tool || 'am' }}
+          MIRRORS: ${{ inputs.mirrors || 'github' }}
           WORKDIR: ${{ runner.temp }}/apu-fw
           OUTDIR: ${{ runner.temp }}/out
         run: scripts/apu-fw build "${{ needs.check.outputs.version }}"
