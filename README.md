@@ -26,8 +26,10 @@ The *Firmware* workflow runs every Monday, or manually from **Actions** → *Fir
 *Run workflow*. A build takes about 5 minutes: the coreboot toolchain comes prebuilt in 3mdeb's
 `dasharo-sdk` container image.
 
-Only apu4 is built by default. To build other boards, set the repository variable `APU_BOARDS`
-(Settings → Secrets and variables → Actions → Variables), for example `["apu2","apu4"]`.
+Both variants are built, SeaBIOS (`seabios-v*` releases) and UEFI (`uefi-v*` releases), for apu4
+only by default. Repository variables (Settings → Secrets and variables → Actions → Variables)
+change that: `APU_BOARDS` for the boards, for example `["apu2","apu4"]`, and `APU_VARIANTS` for the
+variants, for example `["uefi"]`. Manual runs build the variant they are given.
 
 The ROMs are GPL binaries. Each release includes a `.sources` file listing the exact public commits
 used: coreboot, Dasharo patch queue, submodules and toolchain image.
