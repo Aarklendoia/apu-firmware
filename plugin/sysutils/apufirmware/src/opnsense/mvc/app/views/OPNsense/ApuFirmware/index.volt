@@ -90,6 +90,7 @@ $(document).ready(function () {
         let msg = st.message || '';
         if (st.check_error) { msg = st.check_error; }
         else if (st.state === 'idle' && st.blocked_reason) { msg = st.blocked_reason; }
+        else if (st.state === 'idle' && !msg && !st.checked_at) { msg = tr('{{ lang._('Not checked yet.') }}'); }
         else if (st.state === 'idle' && !msg) {
             msg = st.update_available ? tr('{{ lang._('An update is available.') }}') : tr('{{ lang._('Up to date.') }}');
         }
