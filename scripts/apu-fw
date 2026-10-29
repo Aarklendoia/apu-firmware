@@ -131,7 +131,7 @@ build_uefi() {
   cd "$src"
   use_mirrors
   SOURCES="Dasharo coreboot $CB_DASHARO tag pcengines_apu2_v$ver ($(git rev-parse HEAD))"
-  ./build.sh "$BOARD"
+  BUILD_TIMELESS=1 ./build.sh "$BOARD"
 }
 
 do_build() {

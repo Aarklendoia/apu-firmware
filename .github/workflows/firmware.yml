@@ -1,6 +1,7 @@
 name: Firmware
 
-# Checks every week whether 3mdeb has published a new Dasharo version for PC Engines.
+# Checks every week whether 3mdeb has published a new Dasharo version for PC Engines, for
+# each variant (SeaBIOS and UEFI by default, repository variable APU_VARIANTS).
 # If no release with that name exists here, builds the ROMs and publishes a release.
 
 on:
@@ -51,11 +52,8 @@ jobs:
   check:
     runs-on: ubuntu-latest
     outputs:
-      variant: ${{ steps.v.outputs.variant }}
-      version: ${{ steps.v.outputs.version }}
-      tag: ${{ steps.v.outputs.tag }}
-      prerelease: ${{ steps.v.outputs.prerelease }}
-      build: ${{ steps.v.outputs.build }}
+      releases: ${{ steps.v.outputs.releases }}
+      builds: ${{ steps.v.outputs.builds }}
       publish: ${{ steps.v.outputs.publish }}
     steps:
       - uses: actions/checkout@v7
@@ -63,48 +61,50 @@ jobs:
       - id: v
         env:
           GH_TOKEN: ${{ github.token }}
-          VARIANT: ${{ inputs.variant || 'seabios' }}
+          # scheduled runs build every variant of the repository variable APU_VARIANTS
+          VARIANTS: ${{ inputs.variant && format('["{0}"]', inputs.variant) || vars.APU_VARIANTS || '["seabios","uefi"]' }}
+          BOARDS: ${{ vars.APU_BOARDS || '["apu4"]' }}
           UNRELEASED: ${{ inputs.unreleased && '1' || '0' }}
           VERSION: ${{ inputs.version }}
           FORCE: ${{ inputs.force && 'true' || 'false' }}
           # scheduled runs have no inputs: they always publish
           PUBLISH: ${{ (github.event_name == 'workflow_dispatch' && !inputs.publish) && 'false' || 'true' }}
         run: |
-          ver=${VERSION:-$(scripts/apu-fw latest)}
-          [ -n "$ver" ] || { echo "::error::no version found"; exit 1; }
-          base=${ver%-unreleased}
-          tag="$VARIANT-v$base"; pre=false
-          if [ "$ver" != "$base" ]; then tag="$tag-unreleased"; pre=true; fi
+          releases='[]'
+          for variant in $(jq -r '.[]' <<<"$VARIANTS"); do
+            ver=${VERSION:-$(VARIANT=$variant scripts/apu-fw latest)}
+            [ -n "$ver" ] || { echo "::error::no $variant version found"; exit 1; }
+            base=${ver%-unreleased}
+            tag="$variant-v$base"; pre=false
+            if [ "$ver" != "$base" ]; then tag="$tag-unreleased"; pre=true; fi
 
-          if [ "$PUBLISH" = false ]; then
-            build=true
-            echo "::notice::test build of $tag, nothing will be published"
-          elif gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 && [ "$FORCE" != true ]; then
-            build=false
-            echo "::notice::$tag already released, nothing to do"
-          else
-            build=true
-            echo "::notice::building $tag"
-          fi
+            if [ "$PUBLISH" = false ]; then
+              echo "::notice::test build of $tag, nothing will be published"
+            elif gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 && [ "$FORCE" != true ]; then
+              echo "::notice::$tag already released, nothing to do"
+              continue
+            else
+              echo "::notice::building $tag"
+            fi
+            releases=$(jq -c --arg variant "$variant" --arg version "$ver" --arg tag "$tag" --argjson pre "$pre" \
+              '. + [{variant: $variant, version: $version, tag: $tag, prerelease: $pre}]' <<<"$releases")
+          done
           {
-            echo "variant=$VARIANT"
-            echo "version=$ver"
-            echo "tag=$tag"
-            echo "prerelease=$pre"
-            echo "build=$build"
+            echo "releases=$releases"
+            echo "builds=$(jq -c --argjson boards "$BOARDS" '[.[] as $r | $boards[] | $r + {board: .}]' <<<"$releases")"
             echo "publish=$PUBLISH"
           } >> "$GITHUB_OUTPUT"
 
   build:
     needs: check
-    if: needs.check.outputs.build == 'true'
+    if: needs.check.outputs.builds != '[]'
     runs-on: ubuntu-latest
     timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:
-        # Repository variable APU_BOARDS to build other boards, e.g. ["apu2","apu4"]
-        board: ${{ fromJSON(vars.APU_BOARDS || '["apu4"]') }}
+        # one entry per variant and board (repository variable APU_BOARDS, e.g. ["apu2","apu4"])
+        include: ${{ fromJSON(needs.check.outputs.builds) }}
     steps:
       - uses: actions/checkout@v7
 
@@ -115,17 +115,17 @@ jobs:
       - name: Build
         env:
           BOARD: ${{ matrix.board }}
-          VARIANT: ${{ needs.check.outputs.variant }}
+          VARIANT: ${{ matrix.variant }}
           PATCH_TOOL: ${{ inputs.patch_tool || 'am' }}
           MIRRORS: ${{ inputs.mirrors || 'github' }}
           WORKDIR: ${{ runner.temp }}/apu-fw
           OUTDIR: ${{ runner.temp }}/out
-        run: scripts/apu-fw build "${{ needs.check.outputs.version }}"
+        run: scripts/apu-fw build "${{ matrix.version }}"
 
       - name: Summary
         run: |
           {
-            echo "### ${{ matrix.board }}"
+            echo "### ${{ matrix.variant }} ${{ matrix.board }}"
             echo '```'
             cat "${{ runner.temp }}"/out/*.sha256
             grep -h '^official\|^patched' "${{ runner.temp }}"/out/*.sources
@@ -134,28 +134,32 @@ jobs:
 
       - uses: actions/upload-artifact@v7
         with:
-          name: rom-${{ matrix.board }}
+          name: rom-${{ matrix.variant }}-${{ matrix.board }}
           path: ${{ runner.temp }}/out/*
           if-no-files-found: error
 
   release:
     needs: [check, build]
-    if: needs.check.outputs.publish == 'true'
+    if: needs.check.outputs.publish == 'true' && needs.check.outputs.releases != '[]'
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.check.outputs.releases) }}
     steps:
       - uses: actions/download-artifact@v8
         with:
-          pattern: rom-*
+          pattern: rom-${{ matrix.variant }}-*
           path: out
           merge-multiple: true
 
       - name: Release
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ needs.check.outputs.tag }}
-          VARIANT: ${{ needs.check.outputs.variant }}
-          VERSION: ${{ needs.check.outputs.version }}
-          PRERELEASE: ${{ needs.check.outputs.prerelease }}
+          TAG: ${{ matrix.tag }}
+          VARIANT: ${{ matrix.variant }}
+          VERSION: ${{ matrix.version }}
+          PRERELEASE: ${{ matrix.prerelease }}
         working-directory: out
         run: |
           sha256sum *.rom > SHA256SUMS
