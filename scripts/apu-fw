@@ -131,7 +131,10 @@ build_uefi() {
   cd "$src"
   use_mirrors
   SOURCES="Dasharo coreboot $CB_DASHARO tag pcengines_apu2_v$ver ($(git rev-parse HEAD))"
-  BUILD_TIMELESS=1 ./build.sh "$BOARD"
+  # no BUILD_TIMELESS: it would replace the version (firmware ID) with -TIMELESS--LESSTIME-.
+  # The build stays reproducible: coreboot takes the version from git describe and the
+  # date from the commit.
+  ./build.sh "$BOARD"
 }
 
 do_build() {
