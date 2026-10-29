@@ -4,6 +4,7 @@ import http.server
 import json
 import os
 import shutil
+import struct
 import subprocess
 import sys
 import tempfile
@@ -16,6 +17,22 @@ os.makedirs(BIN)
 
 ROM = b'\xff' * 1024 + b'NEWFW'
 ROM_NAME = 'pcengines_apu4_seabios_v24.08.00.01.rom'
+
+
+def fmap_rom(gbb, fill):
+    """Small Dasharo UEFI image: RW_SECTION_A in the lower half, WP_RO (FMAP, GBB) in the upper half."""
+    areas = [('RW_SECTION_A', 0x1000, 0x3000), ('WP_RO', 0x4000, 0x4000), ('FMAP', 0x4000, 0x400),
+             ('GBB', 0x4400, 0x100), ('COREBOOT', 0x4500, 0x3b00)]
+    data = bytearray(fill * 0x8000)
+    hdr = b'__FMAP__' + struct.pack('<BBQI32sH', 1, 1, 0, len(data), b'FLASH', len(areas))
+    hdr += b''.join(struct.pack('<II32sH', off, size, name.encode(), 0) for name, off, size in areas)
+    data[0x4000:0x4000 + len(hdr)] = hdr
+    data[0x4400:0x4500] = gbb.ljust(0x100, b'\0')
+    return bytes(data)
+
+
+UEFI_ROM = fmap_rom(b'$GBB key 1', b'\x01')
+UEFI_NAME = 'pcengines_apu4_uefi_v0.9.1.rom'
 SEEN = []          # (path, authorization header) of every request
 BAD_SUMS = {'on': False}
 
@@ -37,6 +54,9 @@ class Fake(http.server.BaseHTTPRequestHandler):
                  'html_url': 'https://github.com/me/apu-firmware/releases/tag/seabios-v24.08.00.01',
                  'assets': [{'name': ROM_NAME, 'url': base + '/asset/rom'},
                             {'name': 'SHA256SUMS', 'url': base + '/asset/sums'}]},
+                {'tag_name': 'uefi-v0.9.1', 'draft': False, 'prerelease': False, 'html_url': 'z',
+                 'assets': [{'name': UEFI_NAME, 'url': base + '/asset/uefirom'},
+                            {'name': 'SHA256SUMS', 'url': base + '/asset/uefisums'}]},
                 {'tag_name': 'seabios-v25.09.00.01-unreleased', 'draft': False, 'prerelease': True,
                  'html_url': 'y', 'assets': [
                      {'name': 'pcengines_apu4_seabios_v25.09.00.01-unreleased.rom', 'url': base + '/asset/pre'},
@@ -57,6 +77,10 @@ class Fake(http.server.BaseHTTPRequestHandler):
             what = self.path[len('/signed/'):]
             if what == 'rom':
                 return self._send(ROM)
+            if what == 'uefirom':
+                return self._send(UEFI_ROM)
+            if what == 'uefisums':
+                return self._send(('%s  %s\n' % (hashlib.sha256(UEFI_ROM).hexdigest(), UEFI_NAME)).encode())
             if what == 'sums':
                 h = '0' * 64 if BAD_SUMS['on'] else hashlib.sha256(ROM).hexdigest()
                 return self._send(('%s  %s\n' % (h, ROM_NAME)).encode())
@@ -81,12 +105,25 @@ def fake(name, body):
     os.chmod(p, 0o755)
 
 
-def hw(product, bios, flash_ok=True, write_fail=False, reg='580ffe00'):
+AMBIGUOUS = ('echo \'Multiple flash chip definitions match the detected chip(s): '
+             '"W25Q64BV/W25Q64CV/W25Q64FV", "W25Q64JV-.Q"\'; exit 1')
+
+
+def hw(product, bios, flash_ok=True, write_fail=False, reg='580ffe00', ambiguous=False, wp=(0, 0), flash=b'x'):
+    """Fake board: wp is the protected (start, length), flash the content read by flashrom -r."""
     fake('kenv', 'case "$2" in smbios.system.product) echo "%s";; smbios.bios.version) echo "%s";; esac\n'
          % (product, bios))
+    with open(os.path.join(ROOT, 'flash.rom'), 'wb') as f:
+        f.write(flash)
+    # like flashrom on an apu4 W25Q64: without -c, it stops after probing
     fake('flashrom', 'echo "flashrom $*" >> %s/flashrom.calls\n'
-         'case "$*" in *" -r "*) %s;; *" -w "*) echo "Erasing and writing flash chip... "; %s;; esac\n'
-         % (ROOT, 'printf x > "$4"' if flash_ok else 'echo "write protected"; exit 1',
+         'case "$*" in *" -c "*) ;; *) %s;; esac\n'
+         'case "$*" in "-p internal") ;;\n'
+         '  *--wp-status*) echo "Protection range: start=0x%08x length=0x%08x";;\n'
+         '  *" -r "*) %s;;\n'
+         '  *" -w "*) echo "Erasing and writing flash chip... "; %s;; esac\n'
+         % (ROOT, AMBIGUOUS if ambiguous else ':', wp[0], wp[1],
+            'cp %s/flash.rom "$4"' % ROOT if flash_ok else 'echo "write protected"; exit 1',
             'echo FAILED; exit 1' if write_fail else 'echo "Erase/write done."; echo "Verifying flash... VERIFIED."'))
     fake('pciconf', 'echo "pciconf $*" >> %s/pciconf.calls\n[ "$1" = "-r" ] && echo %s\nexit 0\n' % (ROOT, reg))
 
@@ -170,7 +207,8 @@ _, st = run('status')
 fl = calls('flashrom.calls')
 check('flash: exit 0', code == 0, open(env['APUFW_LOG']).read())
 check('flash: state flashed + cold reset needed', st['state'] == 'flashed' and st['needs_coldreset'], st)
-check('flash: backup taken first', fl.splitlines()[0].startswith('flashrom -p internal -r '), fl)
+rw = [line for line in fl.splitlines() if ' -r ' in line or ' -w ' in line]
+check('flash: backup taken first', rw[0].startswith('flashrom -p internal -r '), fl)
 check('flash: legacy -> full image (no --fmap)', '-w' in fl and '--fmap' not in fl, fl)
 check('flash: backup file exists', os.path.exists(st.get('last_backup', '')), st)
 check('flash: no update offered until reset', st['update_available'] is False, st)
@@ -189,6 +227,15 @@ hw('apu4', 'v24.05.00.01')
 run('check')
 code, _ = run('flash')
 check('dasharo: --fmap -i COREBOOT', '--fmap -i COREBOOT' in calls('flashrom.calls'), calls('flashrom.calls'))
+
+# 5b. several chip definitions match (apu4 W25Q64): -c on every read and write
+reset_state()
+hw('apu4', 'v24.05.00.01', ambiguous=True)
+code, _ = run('flash')
+fl = calls('flashrom.calls')
+check('ambiguous chip: flash succeeds', code == 0, open(env['APUFW_LOG']).read())
+check('ambiguous chip: -c on read and write',
+      all('-c W25Q64BV/W25Q64CV/W25Q64FV' in line for line in fl.splitlines() if ' -r ' in line or ' -w ' in line), fl)
 
 # 6. checksum mismatch -> nothing written
 reset_state()
@@ -222,6 +269,41 @@ _, st = run('check')
 check('uefi installed + seabios variant: blocked', 'manually' in (st.get('blocked_reason') or ''), st)
 code, _ = run('flash')
 check('uefi installed: flash refused', code == 1 and calls('flashrom.calls') == '', calls('flashrom.calls'))
+
+# 9b. UEFI, upper half write protected (apu4 with Dasharo UEFI): only RW_SECTION_A
+UPPER = (0x4000, 0x4000)
+reset_state()
+config(variant='uefi')
+hw('apu4', 'Dasharo (coreboot+UEFI) v0.9.0', wp=UPPER, flash=fmap_rom(b'$GBB key 1', b'\x00'))
+code, _ = run('flash')
+writes = [line for line in calls('flashrom.calls').splitlines() if ' -w ' in line]
+check('uefi + WP: flash succeeds', code == 0, open(env['APUFW_LOG']).read())
+check('uefi + WP: only RW_SECTION_A written',
+      len(writes) == 1 and writes[0].endswith('--fmap -i RW_SECTION_A'), writes)
+
+# 9c. same, but the read-only part has other keys: refused before writing
+reset_state()
+hw('apu4', 'Dasharo (coreboot+UEFI) v0.9.0', wp=UPPER, flash=fmap_rom(b'$GBB key 2', b'\x00'))
+code, _ = run('flash')
+_, st = run('status')
+check('uefi + WP, other keys: refused', code == 1 and 'other keys' in st['message'], st)
+check('uefi + WP, other keys: no -w', ' -w ' not in calls('flashrom.calls'), calls('flashrom.calls'))
+
+# 9d. UEFI without protection: WP_RO and RW_SECTION_A
+reset_state()
+hw('apu4', 'Dasharo (coreboot+UEFI) v0.9.0', flash=fmap_rom(b'$GBB key 2', b'\x00'))
+code, _ = run('flash')
+check('uefi, no WP: WP_RO and RW_SECTION_A', '--fmap -i WP_RO -i RW_SECTION_A' in calls('flashrom.calls'),
+      calls('flashrom.calls'))
+config()
+
+# 9e. legacy firmware (full image) with protection: refused
+reset_state()
+hw('apu4', 'v4.19.0.1', wp=(0x400000, 0x400000))
+code, _ = run('flash')
+_, st = run('status')
+check('full image + WP: refused', code == 1 and 'write protected' in st['message'], st)
+check('full image + WP: no -w', ' -w ' not in calls('flashrom.calls'), calls('flashrom.calls'))
 
 # 10. pre-releases when enabled
 reset_state()
