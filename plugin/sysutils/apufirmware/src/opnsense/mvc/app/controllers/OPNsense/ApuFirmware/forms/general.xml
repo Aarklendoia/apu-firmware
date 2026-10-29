@@ -1,0 +1,34 @@
+<form>
+    <field>
+        <id>apufirmware.general.enabled</id>
+        <label>Daily check</label>
+        <type>checkbox</type>
+        <help>Check for new firmware every night. New versions are announced in the system status.</help>
+    </field>
+    <field>
+        <id>apufirmware.general.repository</id>
+        <label>GitHub repository</label>
+        <type>text</type>
+        <hint>owner/apu-firmware</hint>
+        <help>Repository whose releases contain the firmware builds (owner/name).</help>
+    </field>
+    <field>
+        <id>apufirmware.general.token</id>
+        <label>Access token</label>
+        <type>password</type>
+        <help>Only for a private repository: fine-grained token with read-only access to its contents.</help>
+    </field>
+    <field>
+        <id>apufirmware.general.variant</id>
+        <label>Firmware variant</label>
+        <type>dropdown</type>
+        <help>Must match the firmware currently installed. Changing variant is not supported from here.</help>
+    </field>
+    <field>
+        <id>apufirmware.general.prerelease</id>
+        <label>Pre-releases</label>
+        <type>checkbox</type>
+        <help>Also offer builds of unreleased Dasharo branches. Not validated by 3mdeb.</help>
+        <advanced>true</advanced>
+    </field>
+</form>

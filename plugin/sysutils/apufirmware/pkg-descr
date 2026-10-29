@@ -1,0 +1,12 @@
+Checks a GitHub repository for Dasharo (coreboot) firmware builds for
+PC Engines apu2, apu3, apu4 and apu6 boards, announces new versions in the
+system status, and flashes them from the web interface: download, sha256
+verification, backup of the current firmware, flashrom write and verify,
+then a remote cold reset.
+
+Plugin Changelog
+================
+
+1.0
+
+* Initial release

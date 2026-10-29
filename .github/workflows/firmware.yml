@@ -1,0 +1,148 @@
+name: Firmware
+
+# Vérifie chaque semaine si 3mdeb a publié une nouvelle version Dasharo pour PC Engines.
+# Si aucune release du même nom n'existe ici, compile les ROMs et publie une release.
+
+on:
+  schedule:
+    - cron: '23 4 * * 1'          # lundi 04:23 UTC
+  workflow_dispatch:
+    inputs:
+      variant:
+        description: Variante
+        type: choice
+        options: [seabios, uefi]
+        default: seabios
+      version:
+        description: Version précise (vide = la plus récente)
+        required: false
+        default: ''
+      unreleased:
+        description: Inclure les branches rel_* non publiées (prerelease)
+        type: boolean
+        default: false
+      force:
+        description: Recompiler même si la release existe
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: firmware
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      variant: ${{ steps.v.outputs.variant }}
+      version: ${{ steps.v.outputs.version }}
+      tag: ${{ steps.v.outputs.tag }}
+      prerelease: ${{ steps.v.outputs.prerelease }}
+      build: ${{ steps.v.outputs.build }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: v
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VARIANT: ${{ inputs.variant || 'seabios' }}
+          UNRELEASED: ${{ inputs.unreleased && '1' || '0' }}
+          VERSION: ${{ inputs.version }}
+          FORCE: ${{ inputs.force && 'true' || 'false' }}
+        run: |
+          ver=${VERSION:-$(scripts/apu-fw latest)}
+          [ -n "$ver" ] || { echo "::error::aucune version trouvée"; exit 1; }
+          base=${ver%-unreleased}
+          tag="$VARIANT-v$base"; pre=false
+          if [ "$ver" != "$base" ]; then tag="$tag-unreleased"; pre=true; fi
+
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 && [ "$FORCE" != true ]; then
+            build=false
+            echo "::notice::$tag déjà publiée, rien à faire"
+          else
+            build=true
+            echo "::notice::compilation de $tag"
+          fi
+          {
+            echo "variant=$VARIANT"
+            echo "version=$ver"
+            echo "tag=$tag"
+            echo "prerelease=$pre"
+            echo "build=$build"
+          } >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: check
+    if: needs.check.outputs.build == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        # Variable de dépôt APU_BOARDS pour en compiler d'autres, ex. ["apu2","apu4"]
+        board: ${{ fromJSON(vars.APU_BOARDS || '["apu4"]') }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compilation
+        env:
+          BOARD: ${{ matrix.board }}
+          VARIANT: ${{ needs.check.outputs.variant }}
+          WORKDIR: ${{ runner.temp }}/apu-fw
+          OUTDIR: ${{ runner.temp }}/out
+        run: scripts/apu-fw build "${{ needs.check.outputs.version }}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rom-${{ matrix.board }}
+          path: ${{ runner.temp }}/out/*
+          if-no-files-found: error
+
+  release:
+    needs: [check, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: rom-*
+          path: out
+          merge-multiple: true
+
+      - name: Publication
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.check.outputs.tag }}
+          VARIANT: ${{ needs.check.outputs.variant }}
+          VERSION: ${{ needs.check.outputs.version }}
+          PRERELEASE: ${{ needs.check.outputs.prerelease }}
+        working-directory: out
+        run: |
+          sha256sum *.rom > SHA256SUMS
+          {
+            echo "Dasharo ($VARIANT) v$VERSION pour PC Engines, compilé depuis les sources publiques de 3mdeb."
+            echo
+            echo '```'
+            cat SHA256SUMS
+            echo '```'
+            echo
+            echo "### Sources"
+            for f in *.sources; do echo; echo '```'; cat "$f"; echo '```'; done
+            if [ "$PRERELEASE" = true ]; then
+              echo
+              echo "> Branche de préparation non publiée par 3mdeb : non validée, à réserver aux tests."
+            fi
+          } > notes.md
+
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" *.rom *.sha256 *.sources SHA256SUMS --clobber --repo "$GITHUB_REPOSITORY"
+            gh release edit "$TAG" --notes-file notes.md --repo "$GITHUB_REPOSITORY"
+          else
+            flags=""
+            [ "$PRERELEASE" = true ] && flags="--prerelease"
+            gh release create "$TAG" *.rom *.sha256 *.sources SHA256SUMS $flags \
+              --title "Dasharo $VARIANT v$VERSION" --notes-file notes.md \
+              --target "$GITHUB_SHA" --repo "$GITHUB_REPOSITORY"
+          fi

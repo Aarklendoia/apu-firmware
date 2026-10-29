@@ -1,0 +1,33 @@
+<model>
+    <mount>//OPNsense/apufirmware</mount>
+    <version>1.0.0</version>
+    <description>PC Engines APU coreboot firmware updates</description>
+    <items>
+        <general>
+            <enabled type="BooleanField">
+                <Default>1</Default>
+                <Required>Y</Required>
+            </enabled>
+            <repository type="TextField">
+                <Mask>/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/</Mask>
+                <ValidationMessage>Use the form owner/repository, e.g. myname/apu-firmware.</ValidationMessage>
+            </repository>
+            <token type="TextField">
+                <Mask>/^[A-Za-z0-9_]*$/</Mask>
+                <ValidationMessage>A GitHub token only contains letters, digits and underscores.</ValidationMessage>
+            </token>
+            <variant type="OptionField">
+                <Default>seabios</Default>
+                <Required>Y</Required>
+                <OptionValues>
+                    <seabios>coreboot + SeaBIOS</seabios>
+                    <uefi>coreboot + UEFI</uefi>
+                </OptionValues>
+            </variant>
+            <prerelease type="BooleanField">
+                <Default>0</Default>
+                <Required>Y</Required>
+            </prerelease>
+        </general>
+    </items>
+</model>

@@ -1,0 +1,9 @@
+<acl>
+    <page-system-firmware-apufirmware>
+        <name>System: Firmware: APU coreboot</name>
+        <patterns>
+            <pattern>ui/apufirmware/*</pattern>
+            <pattern>api/apufirmware/*</pattern>
+        </patterns>
+    </page-system-firmware-apufirmware>
+</acl>

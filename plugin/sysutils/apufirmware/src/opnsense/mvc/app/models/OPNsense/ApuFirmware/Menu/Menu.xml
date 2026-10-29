@@ -1,0 +1,7 @@
+<menu>
+    <System>
+        <Firmware>
+            <ApuFirmware order="75" VisibleName="APU coreboot" url="/ui/apufirmware"/>
+        </Firmware>
+    </System>
+</menu>

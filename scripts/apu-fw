@@ -1,0 +1,190 @@
+#!/usr/bin/env bash
+# apu-fw — veille et compilation du firmware Dasharo pour PC Engines apu2/3/4/6
+#
+#   apu-fw check            liste les versions disponibles, signale les nouveautés
+#   apu-fw build [VERSION]  compile la version demandée (défaut : la plus récente)
+#   apu-fw auto             check + build si nouveauté + notification (pour le timer)
+#   apu-fw latest           affiche seulement la version la plus récente (pour la CI)
+#
+# Configuration : /etc/apu-fw.conf, ~/.config/apu-fw.conf ou variables d'environnement.
+set -euo pipefail
+
+# ---------------------------------------------------------------- configuration
+for f in /etc/apu-fw.conf "${XDG_CONFIG_HOME:-$HOME/.config}/apu-fw.conf"; do
+  # shellcheck source=/dev/null
+  [[ -r $f ]] && source "$f"
+done
+BOARD=${BOARD:-apu4}                  # apu2 | apu3 | apu4 | apu6
+VARIANT=${VARIANT:-seabios}           # seabios | uefi
+UNRELEASED=${UNRELEASED:-0}           # 1 = inclure les branches rel_* pas encore taguées
+WORKDIR=${WORKDIR:-/var/lib/apu-fw}   # sources + cache (~3 Go)
+OUTDIR=${OUTDIR:-$WORKDIR/out}        # ROMs produites
+NOTIFY_URL=${NOTIFY_URL:-}            # ex. https://ntfy.sh/mon-sujet ou webhook Home Assistant
+KEEP_BUILDS=${KEEP_BUILDS:-5}
+MIRRORS=${MIRRORS:-github}            # github | upstream (review.coreboot.org)
+
+PQ_REPO=https://github.com/Dasharo/dasharo-pq
+CB_UPSTREAM=https://github.com/coreboot/coreboot
+CB_DASHARO=https://github.com/Dasharo/coreboot
+STATE=$WORKDIR/state
+
+log()  { printf '[apu-fw] %s\n' "$*" >&2; }
+die()  { log "ERREUR : $*"; exit 1; }
+need() { command -v "$1" >/dev/null || die "commande manquante : $1"; }
+
+case $BOARD in apu2|apu3|apu4|apu6) ;; *) die "BOARD invalide : $BOARD";; esac
+case $VARIANT in seabios|uefi) ;; *) die "VARIANT invalide : $VARIANT";; esac
+
+# ---------------------------------------------------------------- versions distantes
+# Sortie : une version par ligne, triée, la plus récente en dernier.
+# Les versions non publiées sont suffixées « -unreleased ».
+list_versions() {
+  if [[ $VARIANT == seabios ]]; then
+    git ls-remote --tags "$PQ_REPO" \
+      | sed -n 's|.*refs/tags/\([0-9][0-9]*\.[0-9][0-9]\.[0-9][0-9]\.[0-9][0-9]\)$|\1|p'
+    if [[ $UNRELEASED == 1 ]]; then
+      git ls-remote --heads "$PQ_REPO" \
+        | sed -n 's|.*refs/heads/rel_\([0-9.]*\)$|\1-unreleased|p'
+    fi
+  else
+    git ls-remote --tags "$CB_DASHARO" \
+      | sed -n 's|.*refs/tags/pcengines_apu2_v\([0-9]*\.[0-9]*\.[0-9]*\)$|\1|p'
+  fi | sort -uV | awk -F- '
+      { b=$1; if ($0 == b) { t[b]=1; v[b]=$0 } else if (!(b in t)) v[b]=$0 }  # le tag prime sur rel_
+      END { for (b in v) print v[b] }' | sort -V
+}
+
+latest_version() { list_versions | tail -1; }
+last_built()     { cat "$STATE/last-$VARIANT-$BOARD" 2>/dev/null || true; }
+
+# ---------------------------------------------------------------- compilation
+# build.sh et le Makefile coreboot récupèrent eux-mêmes les seuls sous-modules et
+# payloads utiles à l'APU. Avec MIRRORS=github (défaut), on les fait passer par les
+# miroirs GitHub, plus disponibles que review.coreboot.org. Les commits épinglés
+# sont identiques : git vérifie les hashs, le résultat ne change pas.
+use_mirrors() {
+  [[ $MIRRORS == github ]] || return 0
+  # les clones de sous-modules ignorent url.insteadOf local : on réécrit leurs URL
+  git submodule init -q
+  git config --get-regexp '^submodule\..*\.url$' | while read -r key url; do
+    [[ $url == https://review.coreboot.org/* ]] || continue
+    git config "$key" "https://github.com/coreboot/${url#https://review.coreboot.org/}"
+  done
+  # memtest86+ v5 (version coreboot) n'a pas de miroir coreboot sur GitHub : celui
+  # de PC Engines contient le commit épinglé. Le Makefile réutilise un clone existant.
+  local mt=payloads/external/Memtest86Plus/memtest86plus_v5
+  if grep -q memtest86plus_v5 payloads/external/Memtest86Plus/Makefile 2>/dev/null && [[ ! -d $mt ]]; then
+    git clone -q https://github.com/pcengines/memtest86plus "$mt"
+  fi
+}
+
+build_seabios() {
+  local ver=$1 base=${1%-unreleased} src=$WORKDIR/src/seabios-$1
+  local cbtag=${base%.*.*}                         # 24.08.00.01 -> 24.08
+  local pqref=$base; [[ $ver == *-unreleased ]] && pqref=rel_$base
+
+  rm -rf "$src"; mkdir -p "$src"
+  log "coreboot $cbtag + patchqueue $pqref"
+  git clone -q --branch "$cbtag" "$CB_UPSTREAM" "$src"
+  git clone -q --branch "$pqref" --depth 1 "$PQ_REPO" "$src/.pq"
+
+  cd "$src"
+  git checkout -q -b patchqueue
+  # -C1 : même contexte que guilt, l'outil de 3mdeb (certains patchs ont un contexte décalé)
+  while read -r p; do
+    [[ -z $p || $p == \#* ]] && continue
+    git -c user.name=apu-fw -c user.email=apu-fw@localhost am -q -C1 --keep-cr ".pq/patches/$p" \
+      || die "le patch $p ne s'applique pas"
+  done < .pq/patches/series
+  # tag annoté obligatoire : coreboot s'en sert pour la chaîne de version (et le hash)
+  git -c user.name=apu-fw -c user.email=apu-fw@localhost tag -a "v$base" -m "v$base"
+
+  use_mirrors
+  SOURCES="coreboot        $CB_UPSTREAM tag $cbtag ($(git rev-parse "$cbtag^{commit}"))
+dasharo-pq      $PQ_REPO $pqref ($(git -C .pq rev-parse HEAD))
+patched tree    tag v$base ($(git rev-parse HEAD))"
+  BUILD_TIMELESS=1 ./build.sh "seabios_$BOARD"
+}
+
+build_uefi() {
+  local ver=$1 src=$WORKDIR/src/uefi-$1
+  rm -rf "$src"
+  log "Dasharo coreboot pcengines_apu2_v$ver"
+  git clone -q --branch "pcengines_apu2_v$ver" "$CB_DASHARO" "$src"
+  cd "$src"
+  use_mirrors
+  SOURCES="Dasharo coreboot $CB_DASHARO tag pcengines_apu2_v$ver ($(git rev-parse HEAD))"
+  ./build.sh "$BOARD"
+}
+
+do_build() {
+  local ver=${1:-$(latest_version)}
+  [[ -n $ver ]] || die "aucune version trouvée"
+  need git; need docker
+  mkdir -p "$WORKDIR/src" "$OUTDIR" "$STATE"
+
+  local started; started=$(date +%s)
+  # toute la sortie de compilation part sur stderr : stdout ne porte que le résultat
+  if [[ $VARIANT == seabios ]]; then build_seabios "$ver" >&2; else build_uefi "$ver" >&2; fi
+
+  # la ROM produite est la plus récente du dossier source
+  local rom; rom=$(find . -maxdepth 2 -name '*.rom' -newermt "@$started" -printf '%T@ %p\n' \
+                   | sort -n | tail -1 | cut -d' ' -f2-)
+  [[ -n $rom ]] || die "aucune ROM produite"
+
+  local name="pcengines_${BOARD}_${VARIANT}_v${ver}.rom"
+  cp "$rom" "$OUTDIR/$name"
+  ( cd "$OUTDIR" && sha256sum "$name" > "$name.sha256" )
+  {
+    echo "$name"
+    echo "$SOURCES"
+    git submodule status 2>/dev/null | sed 's/^/submodule /'
+    grep -h 'DASHARO_SDK=' build.sh 2>/dev/null | head -1 | sed 's/^/toolchain /'
+  } > "$OUTDIR/$name.sources"
+  echo "$ver" > "$STATE/last-$VARIANT-$BOARD"
+  rm -rf "$WORKDIR/src/$VARIANT-$ver"
+
+  # ménage : garder les KEEP_BUILDS dernières ROMs
+  ls -1t "$OUTDIR"/*.rom 2>/dev/null | tail -n +$((KEEP_BUILDS + 1)) \
+    | while read -r old; do rm -f "$old" "$old.sha256" "$old.sources"; done
+
+  log "OK : $OUTDIR/$name"
+  cat "$OUTDIR/$name.sha256"
+}
+
+notify() {
+  [[ -n $NOTIFY_URL ]] || return 0
+  curl -fsS -m 20 -H "Title: Firmware $BOARD" -d "$1" "$NOTIFY_URL" >/dev/null \
+    || log "notification impossible"
+}
+
+# ---------------------------------------------------------------- commandes
+cmd=${1:-check}; shift || true
+case $cmd in
+  check)
+    need git
+    log "versions $VARIANT disponibles (carte $BOARD) :"
+    list_versions | sed 's/^/  /' >&2
+    latest=$(latest_version); built=$(last_built)
+    log "plus récente : $latest — dernière compilée ici : ${built:-aucune}"
+    [[ $latest != "$built" ]] && exit 10 || exit 0
+    ;;
+  build)
+    do_build "${1:-}"
+    ;;
+  latest)
+    latest_version
+    ;;
+  auto)
+    latest=$(latest_version); built=$(last_built)
+    if [[ -z $latest || $latest == "$built" ]]; then log "rien de nouveau ($built)"; exit 0; fi
+    log "nouvelle version : $latest (précédente : ${built:-aucune})"
+    if out=$(do_build "$latest" 2>"$STATE/last-build.log"); then
+      notify "Dasharo $VARIANT v$latest compilé pour $BOARD. ${out##* }  sha256 ${out%% *}"
+    else
+      notify "Échec de compilation Dasharo $VARIANT v$latest — voir $STATE/last-build.log"
+      exit 1
+    fi
+    ;;
+  *) sed -n '2,9p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
+esac
