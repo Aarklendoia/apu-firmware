@@ -32,6 +32,24 @@ Only apu4 is built by default. To build other boards, set the repository variabl
 The ROMs are GPL binaries. Each release includes a `.sources` file listing the exact public commits
 used: coreboot, Dasharo patch queue, submodules and toolchain image.
 
+### Comparison with the official 3mdeb builds
+
+3mdeb only sells the official ROMs, but publishes their signed sha256. Every build compares its ROM
+with that hash, after checking the signature chain up to the Dasharo master key, and the release
+notes say whether the ROM is **identical** to the official one or **differs**. To check a ROM
+without rebuilding:
+
+```sh
+scripts/apu-fw verify pcengines_apu4_seabios_v24.08.00.01.rom 24.08.00.01
+```
+
+Known difference: the v24.08.00.01 SeaBIOS ROM differs from the official build although every
+input matches 3mdeb's SBOM, and the build is deterministic (same hash with `git am` or `guilt`,
+GitHub or upstream mirrors). See [#5](https://github.com/Aarklendoia/apu-firmware/issues/5).
+
+Manual runs of the *Firmware* workflow accept `patch_tool`, `mirrors` and `publish` (off = test
+build kept as a workflow artifact, no release) to investigate such differences.
+
 ## Installing the plugin on OPNsense
 
 Over SSH on the router, as root:
