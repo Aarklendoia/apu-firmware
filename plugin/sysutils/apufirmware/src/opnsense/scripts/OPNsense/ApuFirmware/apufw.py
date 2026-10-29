@@ -236,6 +236,9 @@ def cmd_status():
     status = load_status()
     hw = hardware()
     status.update(hw)
+    # the variant may have changed since the last check: block right away
+    status['variant'] = settings()['variant']
+    _, status['blocked_reason'] = flash_plan(status, status['variant'])
     # after the cold reset, the new firmware reports the pending version: done
     if status.get('needs_coldreset') and status.get('pending_version') == hw['current_version']:
         status['needs_coldreset'] = False

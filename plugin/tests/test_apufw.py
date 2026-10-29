@@ -147,6 +147,14 @@ check('non-APU: no board', st['board'] is None, st)
 _, st = run('check')
 check('non-APU: check refuses', st['check_error'] == 'Unsupported board.', st)
 
+# 1b. before any check: blocked reason known, nothing checked
+reset_state()
+config()
+hw('apu4', 'Dasharo (coreboot+UEFI) v0.9.0')
+_, st = run('status')
+check('status: not checked yet', not st.get('checked_at'), st)
+check('status: variant mismatch blocked without a check', 'manually' in (st.get('blocked_reason') or ''), st)
+
 # 2. legacy PC Engines v4.19.0.1 -> 24.08 available, full flash
 reset_state()
 config()
