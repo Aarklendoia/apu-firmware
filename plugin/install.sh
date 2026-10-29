@@ -41,8 +41,13 @@ name=${asset#* }
 version=${name#"$PKG"-}
 version=${version%.pkg}
 
+# record the plugin in config.xml, as System > Firmware > Plugins does, otherwise it is
+# listed as "misconfigured"
+register() { /usr/local/opnsense/scripts/firmware/register.php install "$PKG"; }
+
 installed=$(pkg query %v "$PKG" 2>/dev/null || true)
 if [ "$installed" = "$version" ]; then
+    register
     echo "$PKG $version is already installed."
     exit 0
 fi
@@ -58,6 +63,7 @@ if [ -n "$installed" ]; then
     pkg delete -fy "$PKG"
 fi
 pkg add "$tmp/$name"
+register
 service configd restart
 
 echo
