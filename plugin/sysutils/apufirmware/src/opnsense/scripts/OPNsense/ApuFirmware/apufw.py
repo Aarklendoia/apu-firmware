@@ -40,6 +40,7 @@ import json
 import os
 import re
 import shutil
+import struct
 import subprocess
 import sys
 import time
@@ -160,6 +161,62 @@ def flashrom_chip():
     match = re.search(r'Multiple flash chip definitions match the detected chip\(s\): (.*)', out)
     names = re.findall(r'"([^"]+)"', match.group(1)) if match else []
     return ['-c', names[0]] if names else []
+
+
+def write_protection(chip):
+    """(start, length) of the flash range protected against writes, (0, 0) if none."""
+    _, out = run(['flashrom', '-p', 'internal', '--wp-status'] + chip, logged=True)
+    match = re.search(r'Protection range: start=0x([0-9a-fA-F]+) length=0x([0-9a-fA-F]+)', out)
+    return (int(match.group(1), 16), int(match.group(2), 16)) if match else (0, 0)
+
+
+def fmap(data):
+    """FMAP areas of a ROM image as {name: (offset, size)}, empty if there is none."""
+    pos = -1
+    while True:
+        pos = data.find(b'__FMAP__', pos + 1)
+        if pos < 0 or pos + 56 > len(data):
+            return {}
+        major, _, _, size, _, count = struct.unpack_from('<BBQI32sH', data, pos + 8)
+        # the signature also appears in the code: check the header
+        if major == 1 and size == len(data) and pos + 56 + count * 42 <= len(data):
+            break
+    areas = {}
+    for i in range(count):
+        offset, size, name, _ = struct.unpack_from('<II32sH', data, pos + 56 + i * 42)
+        areas[name.rstrip(b'\0').decode('ascii', 'replace')] = (offset, size)
+    return areas
+
+
+def fit_protection(plan, wp, rom, backup):
+    """Adapt the flashrom arguments to the write protection: (arguments, error)."""
+    start, length = wp
+    if not length:
+        return plan, None
+    where = 'The flash is write protected (0x%x-0x%x)' % (start, start + length - 1)
+    with open(rom, 'rb') as f:
+        new = f.read()
+    with open(backup, 'rb') as f:
+        current = f.read()
+    areas = fmap(new)
+    if '--fmap' not in plan or not areas:
+        return None, where + ' and the whole image must be written: disable the protection.'
+    names = plan[2::2]          # ['--fmap', '-i', A, '-i', B]
+    hit = [n for n in names if n not in areas
+           or (areas[n][0] < start + length and start < areas[n][0] + areas[n][1])]
+    if not hit:
+        return plan, None
+    if hit != ['WP_RO'] or 'RW_SECTION_A' not in names:
+        return None, where + ' and covers %s: disable the protection.' % ', '.join(hit)
+    # vboot: the read-only part stays and checks RW_SECTION_A with the keys of its GBB
+    if fmap(current) != areas or 'GBB' not in areas:
+        return None, where + ': only RW_SECTION_A could be written, but the flash layout differs.'
+    gbb = slice(areas['GBB'][0], areas['GBB'][0] + areas['GBB'][1])
+    if current[gbb] != new[gbb]:
+        return None, where + ': only RW_SECTION_A could be written, but it is signed with other keys ' \
+                             'than the read-only part (GBB), which would reject it.'
+    log('%s: WP_RO is kept, only RW_SECTION_A is written' % where)
+    return ['--fmap', '-i', 'RW_SECTION_A'], None
 
 
 def flash_plan(hw, variant):
@@ -400,6 +457,10 @@ def _flash():
     for old in backups[:-KEEP_BACKUPS]:
         os.unlink(old)
     status['last_backup'] = backup
+
+    plan, error = fit_protection(plan, write_protection(chip), rom, backup)
+    if error:
+        return _fail(status, error + ' Nothing was written.')
 
     status['message'] = 'Writing %s' % rel['rom']['name']
     save_status(status)
