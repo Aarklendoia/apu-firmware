@@ -14,7 +14,7 @@ sources publiques de 3mdeb, et plugin **OPNsense** pour l'installer depuis l'int
 
 ```
 .github/workflows/firmware.yml   veille + compilation + release
-.github/workflows/plugin.yml     lint et tests du plugin
+.github/workflows/plugin.yml     lint, tests, paquet et release du plugin
 scripts/apu-fw                   compilation (utilisable aussi en local, cf. en-tête)
 plugin/sysutils/apufirmware/     sources du plugin OPNsense
 plugin/install.sh                installation du plugin sur le routeur
@@ -54,14 +54,19 @@ GitHub → Settings → Developer settings → **Fine-grained tokens** :
 En SSH sur le routeur, en root :
 
 ```sh
-pkg install -y git
-git clone https://<toi>:<jeton>@github.com/<toi>/apu-firmware.git /root/apu-firmware
-sh /root/apu-firmware/plugin/install.sh
+fetch -o - https://raw.githubusercontent.com/<toi>/apu-firmware/main/plugin/install.sh | sh
 ```
 
-Le script construit le paquet dans l'arborescence officielle `opnsense/plugins`, l'installe avec
-`flashrom`, puis recharge configd. Pour une mise à jour du plugin : `git -C /root/apu-firmware pull`,
-puis relancer `install.sh`.
+Le script télécharge le paquet `os-apufirmware` de la dernière release `plugin-v*`, installe
+`flashrom`, remplace la version déjà installée puis recharge configd. La même commande sert aux
+mises à jour du plugin. Variables facultatives : `APUFW_REPO=<toi>/apu-firmware` pour un autre
+dépôt, `APUFW_TOKEN=<jeton>` si le dépôt est privé (le script se télécharge alors depuis un clone).
+
+Versions du plugin : à chaque fusion sur `main` qui modifie `plugin/sysutils/`, la CI compile le
+paquet dans une VM FreeBSD et publie une release `plugin-vX.Y.Z`. `X.Y` vient de `PLUGIN_VERSION`
+dans le `Makefile` du plugin (à changer à la main pour une évolution notable), `Z` est incrémenté
+automatiquement. Ces releases n'installent rien d'elles-mêmes, et le firmware n'est jamais flashé
+sans un clic dans l'interface.
 
 Configuration : **Système → Firmware → APU coreboot**. Renseigner `<toi>/apu-firmware` et le
 jeton, enregistrer. Une vérification se lance immédiatement.
