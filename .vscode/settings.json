@@ -1,5 +1,5 @@
 {
-    // Python : style OPNsense (guillemets simples), pas de formatage automatique
+    // Python: OPNsense style (single quotes), no automatic formatting
     "[python]": {
         "editor.defaultFormatter": null,
         "editor.formatOnSave": false

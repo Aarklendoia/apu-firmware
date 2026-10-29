@@ -1,119 +1,103 @@
 # apu-firmware
 
-Firmware **Dasharo (coreboot)** pour PC Engines apu2/3/4/6, compilé automatiquement depuis les
-sources publiques de 3mdeb, et plugin **OPNsense** pour l'installer depuis l'interface web.
+**Dasharo (coreboot)** firmware for PC Engines apu2/3/4/6, built automatically from 3mdeb's public
+sources, and an **OPNsense** plugin to install it from the web interface.
 
-- **CI** : chaque lundi, GitHub Actions regarde si 3mdeb a publié une nouvelle version. Si c'est
-  le cas, la ROM est compilée et publiée comme release du dépôt (ROM, `SHA256SUMS`, traçabilité
-  des sources).
-- **Plugin `os-apufirmware`** : vérifie chaque nuit les releases du dépôt, annonce les
-  nouvelles versions dans la cloche de notifications d'OPNsense, et propose un bouton
-  *Update firmware*. Il télécharge la ROM, vérifie le sha256, sauvegarde le firmware actuel,
-  flashe, vérifie l'écriture, puis propose un bouton *Cold reset* pour démarrer le nouveau
-  firmware à distance.
+- **CI**: every Monday, GitHub Actions checks whether 3mdeb has published a new version. If so, the
+  ROM is built and published as a release of this repository (ROM, `SHA256SUMS`, source
+  traceability).
+- **`os-apufirmware` plugin**: checks this repository's releases every night, announces new
+  versions in the OPNsense notification bell, and offers an *Update firmware* button. It downloads
+  the ROM, verifies its sha256, backs up the current firmware, flashes, verifies the write, then
+  offers a *Cold reset* button to start the new firmware remotely.
 
 ```
-.github/workflows/firmware.yml   veille + compilation + release
-.github/workflows/plugin.yml     lint, tests, paquet et release du plugin
-scripts/apu-fw                   compilation (utilisable aussi en local, cf. en-tête)
-plugin/sysutils/apufirmware/     sources du plugin OPNsense
-plugin/install.sh                installation du plugin sur le routeur
-plugin/tests/                    tests du backend (faux flashrom, faux GitHub)
+.github/workflows/firmware.yml   version check + build + release
+.github/workflows/plugin.yml     plugin lint, tests, package and release
+scripts/apu-fw                   firmware build (also usable locally, see its header)
+plugin/sysutils/apufirmware/     OPNsense plugin sources
+plugin/install.sh                plugin installation on the router
+plugin/tests/                    backend tests (fake flashrom, fake GitHub)
 ```
 
-## 1. Mise en place du dépôt
+## Firmware builds
 
-Créer un dépôt **privé** `apu-firmware` sur GitHub, puis :
+The *Firmware* workflow runs every Monday, or manually from **Actions** → *Firmware* →
+*Run workflow*. A build takes about 5 minutes: the coreboot toolchain comes prebuilt in 3mdeb's
+`dasharo-sdk` container image.
 
-```bash
-git remote add origin git@github.com:<toi>/apu-firmware.git
-git push -u origin main
-```
+Only apu4 is built by default. To build other boards, set the repository variable `APU_BOARDS`
+(Settings → Secrets and variables → Actions → Variables), for example `["apu2","apu4"]`.
 
-Pourquoi privé : les ROMs compilées sont des binaires GPL que 3mdeb vend sous abonnement. Dans un
-dépôt privé, tu ne redistribues rien et la question ne se pose pas. Si tu le rends public, tu dois
-fournir les sources correspondantes (les fichiers `.sources` de chaque release pointent vers les
-commits exacts).
+The ROMs are GPL binaries. Each release includes a `.sources` file listing the exact public commits
+used: coreboot, Dasharo patch queue, submodules and toolchain image.
 
-Premier build : onglet **Actions** → *Firmware* → *Run workflow*. Ensuite, c'est automatique tous
-les lundis. Compter 20 à 40 minutes pour une compilation. La consommation reste très en dessous
-du quota gratuit d'un dépôt privé : une vérification par semaine, une compilation par version.
+## Installing the plugin on OPNsense
 
-Pour compiler d'autres cartes, crée la variable de dépôt `APU_BOARDS` (Settings → Secrets and
-variables → Actions → Variables), par exemple `["apu2","apu4"]`. Par défaut : `["apu4"]`.
-
-## 2. Jeton pour le routeur (dépôt privé)
-
-GitHub → Settings → Developer settings → **Fine-grained tokens** :
-- *Repository access* : uniquement `apu-firmware`
-- *Permissions* : **Contents : Read-only** (rien d'autre)
-- expiration : à ton choix (le plugin signalera une erreur de vérification à l'expiration)
-
-## 3. Installation du plugin sur OPNsense
-
-En SSH sur le routeur, en root :
+Over SSH on the router, as root:
 
 ```sh
-fetch -o - https://raw.githubusercontent.com/<toi>/apu-firmware/main/plugin/install.sh | sh
+fetch -o - https://raw.githubusercontent.com/Aarklendoia/apu-firmware/main/plugin/install.sh | sh
 ```
 
-Le script télécharge le paquet `os-apufirmware` de la dernière release `plugin-v*`, installe
-`flashrom`, remplace la version déjà installée puis recharge configd. La même commande sert aux
-mises à jour du plugin. Variables facultatives : `APUFW_REPO=<toi>/apu-firmware` pour un autre
-dépôt, `APUFW_TOKEN=<jeton>` si le dépôt est privé (le script se télécharge alors depuis un clone).
+The script downloads the `os-apufirmware` package from the latest `plugin-v*` release, installs
+`flashrom`, replaces the installed version and reloads configd. Run the same command to update the
+plugin. Optional variables: `APUFW_REPO=<owner>/<repo>` for a fork, `APUFW_TOKEN=<token>` for a
+private repository.
 
-Versions du plugin : à chaque fusion sur `main` qui modifie `plugin/sysutils/`, la CI compile le
-paquet dans une VM FreeBSD et publie une release `plugin-vX.Y.Z`. `X.Y` vient de `PLUGIN_VERSION`
-dans le `Makefile` du plugin (à changer à la main pour une évolution notable), `Z` est incrémenté
-automatiquement. Ces releases n'installent rien d'elles-mêmes, et le firmware n'est jamais flashé
-sans un clic dans l'interface.
+Then open **System → Firmware → APU coreboot**, enter the repository (`Aarklendoia/apu-firmware`)
+and save. A check starts immediately. The access token is only needed for a private repository:
+use a fine-grained token limited to that repository with **Contents: Read-only**.
 
-Configuration : **Système → Firmware → APU coreboot**. Renseigner `<toi>/apu-firmware` et le
-jeton, enregistrer. Une vérification se lance immédiatement.
+### Plugin versions
 
-## 4. Mise à jour du firmware
+Every merge to `main` that changes `plugin/sysutils/` builds the package in a FreeBSD VM and
+publishes a `plugin-vX.Y.Z` release. `X.Y` comes from `PLUGIN_VERSION` in the plugin `Makefile`
+(bump it by hand for notable changes), `Z` is incremented automatically. These releases never
+install anything by themselves, and the firmware is never flashed without a click in the web
+interface.
 
-1. Une notification apparaît dans la cloche quand une nouvelle version est publiée.
-2. Page *APU coreboot* → **Update firmware**. Le journal défile pendant l'opération (~1 minute).
-3. **Cold reset** : les services sont arrêtés proprement, puis la carte est coupée quelques
-   secondes et redémarre sur le nouveau firmware. Un `reboot` classique ne suffit pas sur APU.
+## Updating the firmware
 
-Ce que fait le plugin, dans l'ordre (tout arrêt avant l'étape 4 laisse la flash intacte) :
-1. téléchargement depuis la release, vérification sha256 ;
-2. sauvegarde de la flash actuelle dans `/var/db/apufirmware/backup/` (3 dernières gardées) ;
-3. contrôle : carte apu2/3/4/6 reconnue, même variante que le firmware installé ;
-4. écriture par `flashrom` puis vérification. Depuis un firmware Dasharo, seule la région
-   `COREBOOT` est écrite (ordre de boot et réglages conservés). Depuis le firmware PC Engines
-   d'origine (v4.x), l'image complète est écrite, comme le préconise 3mdeb, et les réglages
-   reviennent aux valeurs par défaut.
+1. A notification appears in the bell when a new version is published.
+2. *APU coreboot* page → **Update firmware**. The log scrolls during the operation (~1 minute).
+3. **Cold reset**: services are stopped cleanly, then the board is powered off for a few seconds
+   and boots the new firmware. A regular `reboot` is not enough on an APU.
 
-## Avant la première mise à jour
+What the plugin does, in order (any failure before step 4 leaves the flash untouched):
+1. download from the release, sha256 verification;
+2. backup of the current flash to `/var/db/apufirmware/backup/` (last 3 kept);
+3. checks: apu2/3/4/6 board detected, same variant as the installed firmware;
+4. `flashrom` write, then verification. From a Dasharo firmware, only the `COREBOOT` region is
+   written (boot order and settings are kept). From the original PC Engines firmware (v4.x), the
+   full image is written, as recommended by 3mdeb, and settings return to their defaults.
 
-- Menu **F10** au démarrage (sortbootorder) : la protection en écriture du firmware doit être
-  désactivée. C'est la dernière fois que la tablette en RS232 sert, normalement.
-- Le cavalier de protection d'écriture (J3 sur apu4) ne doit pas être posé.
-- Garder une console série à portée pour cette première fois. Les suivantes se font à distance.
+## Before the first update
 
-## En cas de problème
+- **F10** menu at boot (sortbootorder): firmware write protection must be disabled. This should be
+  the last time the serial console is needed.
+- The write-protect jumper (J3 on apu4) must not be fitted.
+- Keep a serial console at hand for this first time. Later updates can be done remotely.
 
-- **Échec avant l'écriture** (téléchargement, sha256, protection en écriture) : rien n'a été
-  modifié, le message l'indique.
-- **Échec pendant l'écriture** : le message dit **NE PAS REDÉMARRER**. Relancer la mise à jour,
-  ou restaurer la sauvegarde en SSH :
-  `flashrom -p internal -w /var/db/apufirmware/backup/<fichier>.rom`
-- **La carte ne démarre plus** : seul un programmeur SPI externe (ex. CH341A + pince SOIC8, ou
-  le spi1a de PC Engines) permet de réécrire la sauvegarde.
+## Troubleshooting
 
-## Traduction
+- **Failure before writing** (download, sha256, write protection): nothing was changed, and the
+  message says so.
+- **Failure while writing**: the message says **DO NOT REBOOT**. Retry the update, or restore the
+  backup over SSH:
+  `flashrom -p internal -w /var/db/apufirmware/backup/<file>.rom`
+- **The board no longer boots**: only an external SPI programmer (e.g. CH341A with a SOIC8 clip,
+  or the PC Engines spi1a) can write the backup back.
 
-Les textes de l'interface sont en anglais, comme dans tout OPNsense, et passent par
-`gettext` (`lang._()` dans la vue). Ils restent en anglais tant qu'ils ne sont pas traduits.
+## Translation
 
-## Limites connues
+The interface strings are in English, like the rest of OPNsense, and go through `gettext`
+(`lang._()` in the view), so they can be translated.
 
-- Le passage SeaBIOS ↔ UEFI n'est pas géré depuis l'interface (OPNsense doit être réinstallé en
-  mode UEFI). Rester en SeaBIOS sauf besoin précis.
-- Le plugin a été testé avec un faux `flashrom` et un faux GitHub (`plugin/tests/`), pas sur
-  du matériel réel avant sa première utilisation.
-- Les builds `-unreleased` (option *Pré-versions*) viennent de branches que 3mdeb n'a pas
-  validées.
+## Known limitations
+
+- Switching between SeaBIOS and UEFI is not supported from the interface (OPNsense must be
+  reinstalled in UEFI mode). Stay on SeaBIOS unless you have a specific need.
+- The plugin has been tested with a fake `flashrom` and a fake GitHub (`plugin/tests/`), not on
+  real hardware before its first use.
+- `-unreleased` builds (*Pre-releases* option) come from branches that 3mdeb has not validated.

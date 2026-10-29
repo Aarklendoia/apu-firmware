@@ -2,7 +2,7 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "Tests plugin",
+            "label": "Plugin tests",
             "type": "shell",
             "command": "python3 -I plugin/tests/test_apufw.py plugin/sysutils/apufirmware/src/opnsense/scripts/OPNsense/ApuFirmware/apufw.py",
             "group": { "kind": "test", "isDefault": true },
@@ -37,7 +37,7 @@
             }
         },
         {
-            "label": "Versions Dasharo disponibles",
+            "label": "Available Dasharo versions",
             "type": "shell",
             "command": "scripts/apu-fw check",
             "problemMatcher": []
