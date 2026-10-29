@@ -1,6 +1,8 @@
 PLUGIN_NAME=		apufirmware
-# X.Y is set by hand; CI appends .Z on each release (plugin-vX.Y.Z tags)
-PLUGIN_VERSION=		1.0
+# set by release-please from the Conventional Commits merged since the last release
+# x-release-please-start-version
+PLUGIN_VERSION=		1.0.1
+# x-release-please-end
 PLUGIN_COMMENT=		Coreboot (Dasharo) firmware updates for PC Engines APU
 PLUGIN_DEPENDS=		flashrom
 PLUGIN_MAINTAINER=	edtech

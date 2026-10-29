@@ -2,13 +2,13 @@ name: Plugin
 
 # Lint, tests and package on every PR: lint-test and package are required checks for
 # merging, so they must run whatever files changed.
-# On main, if the plugin changed since the last plugin-v* release, publish a new
-# version X.Y.Z: X.Y comes from the plugin Makefile, Z is incremented.
+# On main, release-please keeps a release PR up to date from the Conventional Commits
+# that touch the plugin. Merging it tags plugin-vX.Y.Z and creates the release, then the
+# package is built and attached to it.
 
 on:
   push:
     branches: [main]
-    paths: ['plugin/**', '.github/workflows/plugin.yml']
   pull_request:
 
 jobs:
@@ -34,51 +34,47 @@ jobs:
       - name: Backend tests
         run: python3 -I plugin/tests/test_apufw.py plugin/sysutils/apufirmware/src/opnsense/scripts/OPNsense/ApuFirmware/apufw.py
 
-  package:
-    needs: lint-test
+  release-please:
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    concurrency:
-      group: plugin-package-${{ github.ref }}
-      cancel-in-progress: false
+      pull-requests: write
+    outputs:
+      created: ${{ steps.rp.outputs['plugin/sysutils/apufirmware--release_created'] }}
+      tag: ${{ steps.rp.outputs['plugin/sysutils/apufirmware--tag_name'] }}
+    steps:
+      - id: rp
+        uses: googleapis/release-please-action@v5
+        with:
+          # a PR opened with GITHUB_TOKEN does not trigger the required checks
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN || github.token }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  package:
+    needs: [lint-test, release-please]
+    # release-please only runs on main: do not let its skip skip the package on PRs
+    if: ${{ !cancelled() && needs.lint-test.result == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0              # tags and history for the version and the notes
 
       - id: v
         run: |
-          base=$(sed -n 's/^PLUGIN_VERSION=[[:space:]]*//p' plugin/sysutils/apufirmware/Makefile)
-          [ -n "$base" ] || { echo "::error::PLUGIN_VERSION not found"; exit 1; }
-          prev=$(git tag -l 'plugin-v*' --sort=-v:refname | head -1)
-          last=$(git tag -l "plugin-v$base.*" --sort=-v:refname | head -1)
-          if [ -n "$last" ]; then patch=$(( ${last##*.} + 1 )); else patch=0; fi
-          version=$base.$patch
-
-          release=false
-          if [ "$GITHUB_REF" = refs/heads/main ] && [ "$GITHUB_EVENT_NAME" = push ]; then
-            if [ -z "$prev" ] || ! git diff --quiet "$prev" HEAD -- plugin/sysutils; then
-              release=true
-            else
-              echo "::notice::plugin unchanged since $prev, no new version"
-            fi
-          fi
-          echo "::notice::version $version (release: $release)"
-          {
-            echo "version=$version"
-            echo "prev=$prev"
-            echo "release=$release"
-          } >> "$GITHUB_OUTPUT"
+          version=$(sed -n 's/^PLUGIN_VERSION=[[:space:]]*//p' plugin/sysutils/apufirmware/Makefile)
+          [ -n "$version" ] || { echo "::error::PLUGIN_VERSION not found"; exit 1; }
+          echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: Build (FreeBSD)
         uses: vmactions/freebsd-vm@v1
         env:
-          VERSION: ${{ steps.v.outputs.version }}
           HASH: ${{ github.sha }}
         with:
           release: '14.3'
-          envs: 'VERSION HASH'
+          envs: 'HASH'
           prepare: env ASSUME_ALWAYS_YES=yes pkg install git flashrom
           run: |
             set -e
@@ -86,7 +82,7 @@ jobs:
             cp -R plugin/sysutils/apufirmware /tmp/plugins/sysutils/
             # empty PLUGIN_DEVEL: otherwise the opnsense/plugins master branch builds os-apufirmware-devel
             make -C /tmp/plugins/sysutils/apufirmware package PLUGIN_DEVEL= \
-              PLUGIN_VERSION="$VERSION" PLUGIN_HASH="$(echo "$HASH" | cut -c1-10)" PKGDIR="$PWD/dist"
+              PLUGIN_HASH="$(echo "$HASH" | cut -c1-10)" PKGDIR="$PWD/dist"
             pkg info -F dist/*.pkg
             [ "$(pkg query -F dist/*.pkg %n)" = os-apufirmware ] || { echo 'unexpected package name'; exit 1; }
             pkg query -F dist/*.pkg 'abi: %q' | grep -qi 'freebsd:\*:\*' || { echo 'package is tied to an ABI'; exit 1; }
@@ -97,26 +93,23 @@ jobs:
           path: dist/*.pkg
           if-no-files-found: error
 
-      - name: Release
-        if: steps.v.outputs.release == 'true'
+      - name: Attach to the release
+        if: needs.release-please.outputs.created == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ steps.v.outputs.version }}
-          PREV: ${{ steps.v.outputs.prev }}
+          TAG: ${{ needs.release-please.outputs.tag }}
         run: |
+          [ "$TAG" = "plugin-v${{ steps.v.outputs.version }}" ] || { echo "::error::$TAG does not match the Makefile"; exit 1; }
           {
-            echo "OPNsense plugin os-apufirmware $VERSION."
-            echo
             echo "Install or update, as root on the router:"
             echo
             echo '```sh'
             echo "fetch -o - https://raw.githubusercontent.com/$GITHUB_REPOSITORY/main/plugin/install.sh | sh"
             echo '```'
             echo
-            echo "### Changes"
-            echo
-            git log --no-merges --format='- %s' ${PREV:+"$PREV"..}HEAD -- plugin/sysutils
+            gh release view "$TAG" --json body -q .body --repo "$GITHUB_REPOSITORY"
           } > notes.md
-          gh release create "plugin-v$VERSION" dist/*.pkg \
-            --title "Plugin os-apufirmware $VERSION" --notes-file notes.md \
-            --target "$GITHUB_SHA" --latest=false --repo "$GITHUB_REPOSITORY"
+          gh release upload "$TAG" dist/*.pkg --repo "$GITHUB_REPOSITORY"
+          # "Latest" stays on the firmware releases
+          gh release edit "$TAG" --title "Plugin os-apufirmware ${TAG#plugin-v}" --notes-file notes.md \
+            --latest=false --repo "$GITHUB_REPOSITORY"
