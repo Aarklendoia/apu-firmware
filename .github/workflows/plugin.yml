@@ -1,14 +1,15 @@
 name: Plugin
 
-# Lint et tests à chaque push. Sur main, si le plugin a changé depuis la dernière
-# release plugin-v*, compile le paquet et publie une nouvelle version X.Y.Z :
-# X.Y vient du Makefile du plugin, Z est incrémenté automatiquement.
+# Lint, tests et paquet sur chaque PR : lint-test et package sont des checks requis
+# pour fusionner, ils doivent donc tourner quels que soient les fichiers modifiés.
+# Sur main, si le plugin a changé depuis la dernière release plugin-v*, publie une
+# nouvelle version X.Y.Z : X.Y vient du Makefile du plugin, Z est incrémenté.
 
 on:
   push:
+    branches: [main]
     paths: ['plugin/**', '.github/workflows/plugin.yml']
   pull_request:
-    paths: ['plugin/**', '.github/workflows/plugin.yml']
 
 jobs:
   lint-test:
@@ -23,6 +24,12 @@ jobs:
         run: |
           sudo apt-get install -y -qq libxml2-utils >/dev/null
           find plugin -name '*.xml' -print0 | xargs -0 xmllint --noout
+
+      - name: Shell
+        run: shellcheck --severity=warning scripts/apu-fw plugin/install.sh
+
+      - name: Python
+        run: pipx run flake8 --max-line-length=120 plugin
 
       - name: Tests du backend
         run: python3 -I plugin/tests/test_apufw.py plugin/sysutils/apufirmware/src/opnsense/scripts/OPNsense/ApuFirmware/apufw.py
