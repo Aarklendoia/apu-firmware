@@ -139,14 +139,18 @@ def check(name, cond, detail=''):
 
 
 # 1. not an APU
-reset_state(); config(); hw('', '')
+reset_state()
+config()
+hw('', '')
 _, st = run('status')
 check('non-APU: no board', st['board'] is None, st)
 _, st = run('check')
 check('non-APU: check refuses', st['check_error'] == 'Unsupported board.', st)
 
 # 2. legacy PC Engines v4.19.0.1 -> 24.08 available, full flash
-reset_state(); config(); hw('apu4', 'v4.19.0.1')
+reset_state()
+config()
+hw('apu4', 'v4.19.0.1')
 _, st = run('check')
 check('legacy: latest is 24.08 (prerelease ignored)', st.get('latest_label') == '24.08.00.01', st)
 check('legacy: update available', st.get('update_available') is True, st)
@@ -172,43 +176,58 @@ check('after reboot: cold reset flag cleared', not st['needs_coldreset'] and st[
 check('after reboot: up to date', st['update_available'] is False, st)
 
 # 5. Dasharo 24.05 -> 24.08 keeps settings
-reset_state(); hw('apu4', 'v24.05.00.01')
-run('check'); code, _ = run('flash')
+reset_state()
+hw('apu4', 'v24.05.00.01')
+run('check')
+code, _ = run('flash')
 check('dasharo: --fmap -i COREBOOT', '--fmap -i COREBOOT' in calls('flashrom.calls'), calls('flashrom.calls'))
 
 # 6. checksum mismatch -> nothing written
-reset_state(); hw('apu4', 'v24.05.00.01'); BAD_SUMS['on'] = True
-code, _ = run('flash'); _, st = run('status')
+reset_state()
+hw('apu4', 'v24.05.00.01')
+BAD_SUMS['on'] = True
+code, _ = run('flash')
+_, st = run('status')
 check('bad sha256: error', code == 1 and st['state'] == 'error' and 'Checksum' in st['message'], st)
 check('bad sha256: flashrom never called', calls('flashrom.calls') == '', calls('flashrom.calls'))
 BAD_SUMS['on'] = False
 
 # 7. write protected: backup fails -> nothing written
-reset_state(); hw('apu4', 'v24.05.00.01', flash_ok=False)
-code, _ = run('flash'); _, st = run('status')
+reset_state()
+hw('apu4', 'v24.05.00.01', flash_ok=False)
+code, _ = run('flash')
+_, st = run('status')
 check('write protect: refused before writing', st['state'] == 'error' and 'Backup failed' in st['message'], st)
 check('write protect: no -w', ' -w ' not in calls('flashrom.calls'), calls('flashrom.calls'))
 
 # 8. write failure -> do not reboot
-reset_state(); hw('apu4', 'v24.05.00.01', write_fail=True)
-code, _ = run('flash'); _, st = run('status')
+reset_state()
+hw('apu4', 'v24.05.00.01', write_fail=True)
+code, _ = run('flash')
+_, st = run('status')
 check('write failure: DO NOT REBOOT', 'DO NOT REBOOT' in st['message'], st)
 
 # 9. UEFI firmware with SeaBIOS selected -> blocked
-reset_state(); hw('apu4', 'Dasharo (coreboot+UEFI) v0.9.1')
+reset_state()
+hw('apu4', 'Dasharo (coreboot+UEFI) v0.9.1')
 _, st = run('check')
 check('uefi installed + seabios variant: blocked', 'manually' in (st.get('blocked_reason') or ''), st)
 code, _ = run('flash')
 check('uefi installed: flash refused', code == 1 and calls('flashrom.calls') == '', calls('flashrom.calls'))
 
 # 10. pre-releases when enabled
-reset_state(); config(pre='1'); hw('apu4', 'v24.08.00.01')
+reset_state()
+config(pre='1')
+hw('apu4', 'v24.08.00.01')
 _, st = run('check')
 check('prerelease: offered when enabled', st.get('latest_label') == '25.09.00.01-unreleased', st)
 config()
 
 # 11. private repo token sent to API only
-reset_state(); SEEN.clear(); config(token='github_pat_TEST123'); hw('apu4', 'v24.05.00.01')
+reset_state()
+SEEN.clear()
+config(token='github_pat_TEST123')
+hw('apu4', 'v24.05.00.01')
 run('flash')
 api = [a for p, a in SEEN if p.startswith('/repos/') or p.startswith('/asset/')]
 signed = [a for p, a in SEEN if p.startswith('/signed/')]
@@ -217,18 +236,21 @@ check('token: not leaked to signed URLs', signed and all(a is None for a in sign
 config()
 
 # 12. cold reset safety
-reset_state(); hw('apu4', 'v24.08.00.01', reg='12345678')
+reset_state()
+hw('apu4', 'v24.08.00.01', reg='12345678')
 code, _ = run('coldreset')
 check('coldreset: refused on unexpected register', code == 1 and '-w' not in calls('pciconf.calls'),
       calls('pciconf.calls'))
-reset_state(); hw('apu4', 'v24.08.00.01')
+reset_state()
+hw('apu4', 'v24.08.00.01')
 fake('rc.syshook', 'exit 0\n')
 code, _ = run('coldreset')
 check('coldreset: writes 0x580ffe10', 'pciconf -w pci0:24:0 0x6c 0x580ffe10' in calls('pciconf.calls'),
       calls('pciconf.calls'))
 
 # 13. interrupted run is detected
-reset_state(); hw('apu4', 'v24.05.00.01')
+reset_state()
+hw('apu4', 'v24.05.00.01')
 os.makedirs(env['APUFW_STATE_DIR'])
 with open(os.path.join(env['APUFW_STATE_DIR'], 'status.json'), 'w') as f:
     json.dump({'state': 'running'}, f)
