@@ -1,28 +1,65 @@
 #!/bin/sh
 # Installe ou met à jour le plugin os-apufirmware sur OPNsense (en root).
 #
-#   sh plugin/install.sh            depuis un clone de ce dépôt sur le routeur
+#   fetch -o - https://raw.githubusercontent.com/Aarklendoia/apu-firmware/main/plugin/install.sh | sh
 #
-# Construit le paquet dans l'arborescence officielle opnsense/plugins (Mk/plugins.mk),
-# l'installe avec ses dépendances (flashrom) et recharge configd.
+# Télécharge le paquet de la dernière release plugin-v* du dépôt, installe sa
+# dépendance (flashrom), remplace la version installée et recharge configd.
+# Ne touche jamais au firmware : sa mise à jour se lance depuis l'interface.
+#
+#   APUFW_REPO   dépôt GitHub (défaut : Aarklendoia/apu-firmware)
+#   APUFW_TOKEN  jeton en lecture seule, uniquement si le dépôt est privé
 set -eu
 
-HERE=$(cd "$(dirname "$0")" && pwd)
-TREE=${PLUGINS_TREE:-/usr/plugins}
+REPO=${APUFW_REPO:-Aarklendoia/apu-firmware}
+PKG=os-apufirmware
 
 [ "$(id -u)" -eq 0 ] || { echo "À lancer en root." >&2; exit 1; }
-command -v git >/dev/null || pkg install -y git
 
-if [ -d "$TREE/.git" ]; then
-    git -C "$TREE" pull -q --ff-only
-else
-    git clone -q --depth 1 https://github.com/opnsense/plugins "$TREE"
+gh_get() {
+    if [ -n "${APUFW_TOKEN:-}" ]; then
+        curl -fsSL -H "Authorization: Bearer $APUFW_TOKEN" "$@"
+    else
+        curl -fsSL "$@"
+    fi
+}
+
+# releases de la plus récente à la plus ancienne : la première plugin-v* avec un .pkg
+asset=$(gh_get "https://api.github.com/repos/$REPO/releases?per_page=50" | /usr/local/bin/python3 -c '
+import json, sys
+for rel in json.load(sys.stdin):
+    if rel.get("draft") or not rel.get("tag_name", "").startswith("plugin-v"):
+        continue
+    for a in rel.get("assets", []):
+        if a["name"].endswith(".pkg"):
+            print(a["url"], a["name"])
+            sys.exit()
+')
+[ -n "$asset" ] || { echo "Aucune release plugin-v* avec un paquet dans $REPO." >&2; exit 1; }
+url=${asset% *}
+name=${asset#* }
+version=${name#"$PKG"-}
+version=${version%.pkg}
+
+installed=$(pkg query %v "$PKG" 2>/dev/null || true)
+if [ "$installed" = "$version" ]; then
+    echo "$PKG $version est déjà installé."
+    exit 0
 fi
 
-rm -rf "$TREE/sysutils/apufirmware"
-cp -R "$HERE/sysutils/apufirmware" "$TREE/sysutils/apufirmware"
-make -C "$TREE/sysutils/apufirmware" upgrade
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT
+echo "Téléchargement de $name"
+gh_get -H 'Accept: application/octet-stream' -o "$tmp/$name" "$url"
+
+pkg info -q flashrom || pkg install -y flashrom
+# comme « make upgrade » d'opnsense/plugins : la configuration reste dans config.xml
+if [ -n "$installed" ]; then
+    pkg delete -fy "$PKG"
+fi
+pkg add "$tmp/$name"
 service configd restart
 
 echo
-echo "Installé. Système > Firmware > APU coreboot pour le configurer."
+echo "$PKG ${installed:+$installed -> }$version installé."
+echo "Système > Firmware > APU coreboot pour le configurer."

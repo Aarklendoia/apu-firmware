@@ -1,10 +1,14 @@
 name: Plugin
 
+# Lint et tests à chaque push. Sur main, si le plugin a changé depuis la dernière
+# release plugin-v*, compile le paquet et publie une nouvelle version X.Y.Z :
+# X.Y vient du Makefile du plugin, Z est incrémenté automatiquement.
+
 on:
   push:
     paths: ['plugin/**', '.github/workflows/plugin.yml']
   pull_request:
-    paths: ['plugin/**']
+    paths: ['plugin/**', '.github/workflows/plugin.yml']
 
 jobs:
   lint-test:
@@ -22,3 +26,88 @@ jobs:
 
       - name: Tests du backend
         run: python3 -I plugin/tests/test_apufw.py plugin/sysutils/apufirmware/src/opnsense/scripts/OPNsense/ApuFirmware/apufw.py
+
+  package:
+    needs: lint-test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: plugin-package-${{ github.ref }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0              # tags et historique pour la version et les notes
+
+      - id: v
+        run: |
+          base=$(sed -n 's/^PLUGIN_VERSION=[[:space:]]*//p' plugin/sysutils/apufirmware/Makefile)
+          [ -n "$base" ] || { echo "::error::PLUGIN_VERSION introuvable"; exit 1; }
+          prev=$(git tag -l 'plugin-v*' --sort=-v:refname | head -1)
+          last=$(git tag -l "plugin-v$base.*" --sort=-v:refname | head -1)
+          if [ -n "$last" ]; then patch=$(( ${last##*.} + 1 )); else patch=0; fi
+          version=$base.$patch
+
+          release=false
+          if [ "$GITHUB_REF" = refs/heads/main ] && [ "$GITHUB_EVENT_NAME" = push ]; then
+            if [ -z "$prev" ] || ! git diff --quiet "$prev" HEAD -- plugin/sysutils; then
+              release=true
+            else
+              echo "::notice::plugin inchangé depuis $prev, pas de nouvelle version"
+            fi
+          fi
+          echo "::notice::version $version (release : $release)"
+          {
+            echo "version=$version"
+            echo "prev=$prev"
+            echo "release=$release"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Compilation (FreeBSD)
+        uses: vmactions/freebsd-vm@v1
+        env:
+          VERSION: ${{ steps.v.outputs.version }}
+          HASH: ${{ github.sha }}
+        with:
+          release: '14.3'
+          envs: 'VERSION HASH'
+          prepare: env ASSUME_ALWAYS_YES=yes pkg install git flashrom
+          run: |
+            set -e
+            git clone -q --depth 1 https://github.com/opnsense/plugins /tmp/plugins
+            cp -R plugin/sysutils/apufirmware /tmp/plugins/sysutils/
+            make -C /tmp/plugins/sysutils/apufirmware package \
+              PLUGIN_VERSION="$VERSION" PLUGIN_HASH="$(echo "$HASH" | cut -c1-10)" PKGDIR="$PWD/dist"
+            pkg info -F dist/*.pkg
+            pkg query -F dist/*.pkg 'abi: %q' | grep -qi 'freebsd:\*:\*' || { echo 'paquet lié à une ABI'; exit 1; }
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: os-apufirmware-${{ steps.v.outputs.version }}
+          path: dist/*.pkg
+          if-no-files-found: error
+
+      - name: Publication
+        if: steps.v.outputs.release == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.v.outputs.version }}
+          PREV: ${{ steps.v.outputs.prev }}
+        run: |
+          {
+            echo "Plugin OPNsense os-apufirmware $VERSION."
+            echo
+            echo "Installation ou mise à jour, en root sur le routeur :"
+            echo
+            echo '```sh'
+            echo "fetch -o - https://raw.githubusercontent.com/$GITHUB_REPOSITORY/main/plugin/install.sh | sh"
+            echo '```'
+            echo
+            echo "### Changements"
+            echo
+            git log --no-merges --format='- %s' ${PREV:+"$PREV"..}HEAD -- plugin/sysutils
+          } > notes.md
+          gh release create "plugin-v$VERSION" dist/*.pkg \
+            --title "Plugin os-apufirmware $VERSION" --notes-file notes.md \
+            --target "$GITHUB_SHA" --latest=false --repo "$GITHUB_REPOSITORY"
