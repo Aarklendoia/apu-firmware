@@ -25,6 +25,20 @@ on:
         description: Rebuild even if the release exists
         type: boolean
         default: false
+      patch_tool:
+        description: How to apply the Dasharo patch queue (SeaBIOS)
+        type: choice
+        options: [am, guilt]
+        default: am
+      mirrors:
+        description: Where submodules and payloads come from
+        type: choice
+        options: [github, upstream]
+        default: github
+      publish:
+        description: Publish a release (off = test build, ROM kept as a workflow artifact)
+        type: boolean
+        default: true
 
 permissions:
   contents: write
@@ -42,6 +56,7 @@ jobs:
       tag: ${{ steps.v.outputs.tag }}
       prerelease: ${{ steps.v.outputs.prerelease }}
       build: ${{ steps.v.outputs.build }}
+      publish: ${{ steps.v.outputs.publish }}
     steps:
       - uses: actions/checkout@v7
 
@@ -52,6 +67,8 @@ jobs:
           UNRELEASED: ${{ inputs.unreleased && '1' || '0' }}
           VERSION: ${{ inputs.version }}
           FORCE: ${{ inputs.force && 'true' || 'false' }}
+          # scheduled runs have no inputs: they always publish
+          PUBLISH: ${{ (github.event_name == 'workflow_dispatch' && !inputs.publish) && 'false' || 'true' }}
         run: |
           ver=${VERSION:-$(scripts/apu-fw latest)}
           [ -n "$ver" ] || { echo "::error::no version found"; exit 1; }
@@ -59,7 +76,10 @@ jobs:
           tag="$VARIANT-v$base"; pre=false
           if [ "$ver" != "$base" ]; then tag="$tag-unreleased"; pre=true; fi
 
-          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 && [ "$FORCE" != true ]; then
+          if [ "$PUBLISH" = false ]; then
+            build=true
+            echo "::notice::test build of $tag, nothing will be published"
+          elif gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 && [ "$FORCE" != true ]; then
             build=false
             echo "::notice::$tag already released, nothing to do"
           else
@@ -72,6 +92,7 @@ jobs:
             echo "tag=$tag"
             echo "prerelease=$pre"
             echo "build=$build"
+            echo "publish=$PUBLISH"
           } >> "$GITHUB_OUTPUT"
 
   build:
@@ -87,13 +108,29 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      - name: Install guilt
+        if: inputs.patch_tool == 'guilt'
+        run: sudo apt-get install -y -qq guilt >/dev/null
+
       - name: Build
         env:
           BOARD: ${{ matrix.board }}
           VARIANT: ${{ needs.check.outputs.variant }}
+          PATCH_TOOL: ${{ inputs.patch_tool || 'am' }}
+          MIRRORS: ${{ inputs.mirrors || 'github' }}
           WORKDIR: ${{ runner.temp }}/apu-fw
           OUTDIR: ${{ runner.temp }}/out
         run: scripts/apu-fw build "${{ needs.check.outputs.version }}"
+
+      - name: Summary
+        run: |
+          {
+            echo "### ${{ matrix.board }}"
+            echo '```'
+            cat "${{ runner.temp }}"/out/*.sha256
+            grep -h '^official\|^patched' "${{ runner.temp }}"/out/*.sources
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - uses: actions/upload-artifact@v7
         with:
@@ -103,6 +140,7 @@ jobs:
 
   release:
     needs: [check, build]
+    if: needs.check.outputs.publish == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v8
@@ -127,6 +165,12 @@ jobs:
             echo '```'
             cat SHA256SUMS
             echo '```'
+            echo
+            echo "### Official 3mdeb build"
+            echo
+            echo "3mdeb builds are reproducible: a ROM identical to theirs is bit for bit the official firmware."
+            echo
+            for f in *.sources; do echo "- $(sed -n 's/^official *//p' "$f")"; done
             echo
             echo "### Sources"
             for f in *.sources; do echo; echo '```'; cat "$f"; echo '```'; done
