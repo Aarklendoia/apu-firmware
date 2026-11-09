@@ -1,71 +1,94 @@
 #!/bin/sh
-# Install or update the os-apufirmware plugin on OPNsense (as root).
+# Add the signed os-apufirmware package repository to OPNsense and install the plugin
+# (as root). Run it once: the plugin is then listed under System > Firmware > Plugins
+# and its updates come with the OPNsense updates (System > Firmware > Updates).
 #
 #   fetch -o - https://raw.githubusercontent.com/Aarklendoia/apu-firmware/main/plugin/install.sh | sh
 #
-# Downloads the package from the repository's latest plugin-v* release, installs its
-# dependency (flashrom), replaces the installed version and reloads configd.
+# Running it again is harmless. It also moves an install made by an older version of this
+# script (package added by hand) to the repository.
 # Never touches the firmware: firmware updates are started from the web interface.
 #
-#   APUFW_REPO   GitHub repository (default: Aarklendoia/apu-firmware)
-#   APUFW_TOKEN  read-only token, only for a private repository
+#   APUFW_REPO    GitHub repository of a fork (default: Aarklendoia/apu-firmware); its
+#                 GitHub Pages serve the package repository
+#   APUFW_PUBKEY  public key file of a fork's repository (default: the key below)
+#   APUFW_URL     package repository URL (default: the GitHub Pages of APUFW_REPO), e.g. a
+#                 local copy for tests: file:///path/to/repo
 set -eu
 
 REPO=${APUFW_REPO:-Aarklendoia/apu-firmware}
 PKG=os-apufirmware
+NAME=ApuFirmware
+CONF=/usr/local/etc/pkg/repos/$NAME.conf
+KEY=/usr/local/etc/ssl/$NAME.pub
 
 [ "$(id -u)" -eq 0 ] || { echo "Must be run as root." >&2; exit 1; }
 
-gh_get() {
-    if [ -n "${APUFW_TOKEN:-}" ]; then
-        curl -fsSL -H "Authorization: Bearer $APUFW_TOKEN" "$@"
-    else
-        curl -fsSL "$@"
-    fi
-}
+owner=$(echo "${REPO%%/*}" | tr '[:upper:]' '[:lower:]')
+URL=${APUFW_URL:-"https://$owner.github.io/${REPO#*/}/pkg"}
 
-# releases come newest first: take the first plugin-v* one with a .pkg
-asset=$(gh_get "https://api.github.com/repos/$REPO/releases?per_page=50" | /usr/local/bin/python3 -c '
-import json, sys
-for rel in json.load(sys.stdin):
-    if rel.get("draft") or not rel.get("tag_name", "").startswith("plugin-v"):
-        continue
-    for a in rel.get("assets", []):
-        if a["name"].endswith(".pkg"):
-            print(a["url"], a["name"])
-            sys.exit()
-')
-[ -n "$asset" ] || { echo "No plugin-v* release with a package in $REPO." >&2; exit 1; }
-url=${asset% *}
-name=${asset#* }
-version=${name#"$PKG"-}
-version=${version%.pkg}
+# Signing key of the Aarklendoia/apu-firmware package repository. The CI checks that it
+# matches the private key the repository is signed with.
+# BEGIN PUBLIC KEY
+DEFAULT_KEY='-----BEGIN PUBLIC KEY-----
+MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAybmDJwjsNKwtzw3owI2D
+084vc3jrpGskc4PwKV+bZBK5VWlGewrbwgJaFW3bzwKB/+OUglNjiJ1Y/gsVhXtE
+veHR9UMVch7MY2DXOxNveJbDyiumjU5mfDG7jqIHKCUljvTk+aSw+h2ZjhB9De94
+YnuuJKeXZKRwQljthfHMSO4XmFm7ky0oXW0v4QIR8rgBZ8iyN2/Ey//LGQZM/tcG
+8FbdpbZ603lmNTi0Qp9oYeCJmpyP7CQ0uAbaiktSNHRloNO0TG2IPWs6SW6Mhhvv
+phZVWY7X1tNSn/kyM88Wa7YjlUoQOS4UBY3NaHdLtlUCpB5J0JNsk5RQizvt+F7Z
+bbJgRESKpXDIRAEdh5L56z+OAoDoikmUgB+eOhBfbMYscCSSlt3ujQGXiYNav3le
+MlwKv7XKGsm9tUbOYtgiiGKjI0RAOVdr7/+WUAGvPtvPTfIhPIX5UHAm3+8Og0OM
+uEUCNmIf4ev2iOHUEqtSxa4qIYxjXM5ZLxwdD8KwIFaf910E8YgDyAlNbLxbVYzT
+YfuSYwiOpBxfWwb4tGPVH8Y0mmkjRZUKKe1/B5pyrNzfy7LDjEClUuSddK+UXYE+
+dxLGLUQAwK/pjfqCirPIt3+I3qZY/o2ygCtfAXzN+1V7oT4tmgiPafv8LyRuHWhr
+rFnDw2VoLv++yDKeGsq7GsMCAwEAAQ==
+-----END PUBLIC KEY-----'
+# END PUBLIC KEY
+
+if [ -n "${APUFW_PUBKEY:-}" ]; then
+    cp "$APUFW_PUBKEY" "$KEY"
+elif [ "$REPO" = Aarklendoia/apu-firmware ]; then
+    printf '%s\n' "$DEFAULT_KEY" > "$KEY"
+else
+    echo "A fork needs its own key: set APUFW_PUBKEY to its public key file." >&2
+    exit 1
+fi
+chmod 644 "$KEY"
+
+mkdir -p "${CONF%/*}"
+cat > "$CONF" <<EOF
+$NAME: {
+  url: "$URL",
+  signature_type: "pubkey",
+  pubkey: "$KEY",
+  mirror_type: "none",
+  enabled: yes
+}
+EOF
+echo "Package repository $NAME: $URL"
+
+pkg update -f -r "$NAME"
+version=$(pkg rquery -r "$NAME" %v "$PKG")
+[ -n "$version" ] || { echo "$PKG not found in $URL." >&2; exit 1; }
+installed=$(pkg query %v "$PKG" 2>/dev/null || true)
+from=$(pkg query %R "$PKG" 2>/dev/null || true)
+
+if [ "$installed" = "$version" ] && [ "$from" = "$NAME" ]; then
+    echo "$PKG $version is already installed from $NAME."
+else
+    # -r also limits the dependencies to this repository: flashrom comes from OPNsense's
+    pkg info -q flashrom || pkg install -y flashrom
+    # -f: an install made by hand (or an older version) is replaced by the repository's,
+    # so that later updates come from it. The settings stay in config.xml.
+    pkg install -fy -r "$NAME" "$PKG"
+fi
 
 # record the plugin in config.xml, as System > Firmware > Plugins does, otherwise it is
 # listed as "misconfigured"
-register() { /usr/local/opnsense/scripts/firmware/register.php install "$PKG"; }
-
-installed=$(pkg query %v "$PKG" 2>/dev/null || true)
-if [ "$installed" = "$version" ]; then
-    register
-    echo "$PKG $version is already installed."
-    exit 0
-fi
-
-tmp=$(mktemp -d)
-trap 'rm -rf "$tmp"' EXIT
-echo "Downloading $name"
-gh_get -H 'Accept: application/octet-stream' -o "$tmp/$name" "$url"
-
-pkg info -q flashrom || pkg install -y flashrom
-# like "make upgrade" in opnsense/plugins: the settings stay in config.xml
-if [ -n "$installed" ]; then
-    pkg delete -fy "$PKG"
-fi
-pkg add "$tmp/$name"
-register
+/usr/local/opnsense/scripts/firmware/register.php install "$PKG"
 service configd restart
 
 echo
-echo "$PKG ${installed:+$installed -> }$version installed."
-echo "Configure it under System > Firmware > APU coreboot."
+echo "$PKG ${installed:+$installed -> }$version installed from $NAME."
+echo "Configure it under System > Firmware > APU coreboot. Updates come with the OPNsense updates."
