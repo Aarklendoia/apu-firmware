@@ -109,12 +109,14 @@ jobs:
               cp dist/*.pkg repo/All/
               pkg repo repo .signing.key
               rm -f .signing.key
+              # each check with an empty pkg database: a catalogue accepted by an earlier
+              # check must not be reused
               check_repo() {
-                rm -rf /tmp/repos; mkdir /tmp/repos
+                rm -rf /tmp/repos /tmp/pkgdb; mkdir /tmp/repos /tmp/pkgdb
                 printf 'ApuFirmware: { url: "file://%s/repo", signature_type: "pubkey", pubkey: "%s", enabled: yes }\n' \
                   "$PWD" "$1" > /tmp/repos/ApuFirmware.conf
-                pkg -R /tmp/repos update -f -r ApuFirmware \
-                  && [ "$(pkg -R /tmp/repos rquery -r ApuFirmware %n os-apufirmware)" = os-apufirmware ]
+                pkg -o PKG_DBDIR=/tmp/pkgdb -R /tmp/repos update -f -r ApuFirmware \
+                  && [ "$(pkg -o PKG_DBDIR=/tmp/pkgdb -R /tmp/repos rquery -r ApuFirmware %n os-apufirmware)" = os-apufirmware ]
               }
               check_repo "$PWD/repo.pub" || { echo 'signed repository rejected with the install.sh key'; exit 1; }
               openssl genrsa -out /tmp/other.key 2048 2>/dev/null
