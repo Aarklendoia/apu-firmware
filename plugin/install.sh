@@ -73,13 +73,14 @@ pkg update -f -r "$NAME"
 version=$(pkg rquery -r "$NAME" %v "$PKG")
 [ -n "$version" ] || { echo "$PKG not found in $URL." >&2; exit 1; }
 installed=$(pkg query %v "$PKG" 2>/dev/null || true)
-from=$(pkg query %R "$PKG" 2>/dev/null || true)
+# pkg records the repository a package comes from in its "repository" annotation
+from=$(pkg annotate -Sq "$PKG" repository 2>/dev/null || true)
 
 # an install made by hand (pkg add, older install.sh) stays tied to no repository, even
 # when reinstalled: remove it first, like "make upgrade" in opnsense/plugins. The settings
 # stay in config.xml.
 if [ -n "$installed" ] && [ "$from" != "$NAME" ]; then
-    echo "Moving $PKG $installed ($from) to the $NAME repository"
+    echo "Moving $PKG $installed (${from:-installed by hand}) to the $NAME repository"
     pkg delete -fy "$PKG"
 fi
 

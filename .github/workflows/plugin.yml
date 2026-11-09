@@ -134,16 +134,16 @@ jobs:
               sysrc -q configd_enable=YES
               export APUFW_URL="file://$PWD/repo"
               pkg add dist/*.pkg
-              echo "after pkg add: $(pkg query '%n-%v from %R' os-apufirmware)"
-              [ "$(pkg query %R os-apufirmware)" != ApuFirmware ] || { echo 'pkg add already gives the repository'; exit 1; }
+              echo "after pkg add: $(pkg query '%n-%v %At=%Av' os-apufirmware | tr '\n' ' ')"
+              [ "$(pkg annotate -Sq os-apufirmware repository)" != ApuFirmware ] || { echo 'pkg add already gives the repository'; exit 1; }
               sh plugin/install.sh
-              echo "after install.sh: $(pkg query '%n-%v from %R' os-apufirmware)"
-              [ "$(pkg query %R os-apufirmware)" = ApuFirmware ] || { echo 'not moved to the repository'; exit 1; }
+              echo "after install.sh: $(pkg query '%n-%v %At=%Av' os-apufirmware | tr '\n' ' ')"
+              [ "$(pkg annotate -Sq os-apufirmware repository)" = ApuFirmware ] || { echo 'not moved to the repository'; exit 1; }
               sh plugin/install.sh | grep -q 'already installed from ApuFirmware' || { echo 'second run reinstalled'; exit 1; }
               pkg delete -y os-apufirmware flashrom        # a router where nothing is installed yet
               sh plugin/install.sh
               pkg info -q flashrom || { echo 'flashrom not installed'; exit 1; }
-              [ "$(pkg query %R os-apufirmware)" = ApuFirmware ] || { echo 'fresh install failed'; exit 1; }
+              [ "$(pkg annotate -Sq os-apufirmware repository)" = ApuFirmware ] || { echo 'fresh install failed'; exit 1; }
               [ "$(grep -c 'register install os-apufirmware' /tmp/register.log)" = 3 ] || { echo 'not registered'; exit 1; }
               grep -q 'url: "file://' /usr/local/etc/pkg/repos/ApuFirmware.conf
               cmp /usr/local/etc/ssl/ApuFirmware.pub repo.pub
