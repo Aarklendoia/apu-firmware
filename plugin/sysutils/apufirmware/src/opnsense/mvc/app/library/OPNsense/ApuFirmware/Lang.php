@@ -40,12 +40,15 @@ class Lang
     /* status fields that hold a message from apufw.py, with its template in <field>_t */
     const MESSAGES = ['message', 'check_error', 'blocked_reason'];
 
+    /* where the package installs apufirmware.mo (another directory in the tests) */
+    public static $directory = '/usr/local/share/locale';
+
     private static $bound = false;
 
     public static function bind()
     {
         if (!self::$bound) {
-            bindtextdomain(self::DOMAIN, '/usr/local/share/locale');
+            bindtextdomain(self::DOMAIN, self::$directory);
             bind_textdomain_codeset(self::DOMAIN, 'UTF-8');
             self::$bound = true;
         }

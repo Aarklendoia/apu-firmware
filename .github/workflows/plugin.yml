@@ -41,6 +41,8 @@ jobs:
           sudo apt-get install -y -qq gettext >/dev/null
           python3 -I plugin/lang.py check
           python3 -I plugin/lang.py build "$RUNNER_TEMP/locale"
+          sudo locale-gen fr_FR.UTF-8 >/dev/null
+          php plugin/tests/test_lang.php "$RUNNER_TEMP/locale"
 
   release-please:
     if: github.event_name == 'push'
