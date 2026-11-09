@@ -33,6 +33,9 @@ class IndexController extends \OPNsense\Base\IndexController
     public function indexAction()
     {
         $this->view->pick('OPNsense/ApuFirmware/index');
-        $this->view->generalForm = $this->getForm('general');
+        $this->view->apuLang = new \OPNsense\ApuFirmware\ViewLang();
+        $this->view->generalForm = \OPNsense\ApuFirmware\Lang::within(function () {
+            return $this->getForm('general');
+        });
     }
 }

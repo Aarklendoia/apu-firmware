@@ -206,6 +206,7 @@ hw('apu4', 'Dasharo (coreboot+UEFI) v0.9.0')
 _, st = run('status')
 check('status: not checked yet', not st.get('checked_at'), st)
 check('status: variant mismatch blocked without a check', 'manually' in (st.get('blocked_reason') or ''), st)
+check('status: blocked reason template', st.get('blocked_reason_t', [''])[0] == st.get('blocked_reason'), st)
 
 # 2. legacy PC Engines v4.19.0.1 -> 24.08 available, full flash
 reset_state()
@@ -260,6 +261,9 @@ code, _ = run('flash')
 _, st = run('status')
 check('bad sha256: error', code == 1 and st['state'] == 'error' and 'Checksum' in st['message'], st)
 check('bad sha256: flashrom never called', calls('flashrom.calls') == '', calls('flashrom.calls'))
+tpl = st.get('message_t') or ['', []]
+check('message template: kept for translation',
+      tpl[0] == 'Checksum mismatch for %s (expected %s, got %s).' and tpl[0] % tuple(tpl[1]) == st['message'], st)
 BAD_SUMS['on'] = False
 
 # 7. write protected: backup fails -> nothing written
@@ -421,6 +425,15 @@ with open(os.path.join(env['APUFW_STATE_DIR'], 'status.json'), 'w') as f:
     json.dump({'state': 'running'}, f)
 _, st = run('status')
 check('stale running state -> error', st['state'] == 'error' and 'interrupted' in st['message'], st)
+
+# 14. a template that no longer gives the message is dropped
+reset_state()
+hw('apu4', 'v24.05.00.01')
+os.makedirs(env['APUFW_STATE_DIR'])
+with open(os.path.join(env['APUFW_STATE_DIR'], 'status.json'), 'w') as f:
+    json.dump({'state': 'idle', 'message': 'Changed by hand', 'message_t': ['Downloading %s', ['x.rom']]}, f)
+_, st = run('status')
+check('stale template dropped', st.get('message') == 'Changed by hand' and 'message_t' not in st, st)
 
 print('\n%d failure(s)' % len(FAILS))
 sys.exit(1 if FAILS else 0)

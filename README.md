@@ -156,8 +156,22 @@ updates can be done remotely.
 
 ## Translation
 
-The interface strings are in English, like the rest of OPNsense, and go through `gettext`
-(`lang._()` in the view), so they can be translated.
+The plugin has its own gettext catalogue, `apufirmware`: OPNsense only translates the strings of
+its official plugins. Translations are in `plugin/sysutils/apufirmware/lang/<lang>.po` (French:
+`fr_FR.po`). The package installs them compiled in `/usr/local/share/locale`, and the interface
+falls back to the OPNsense catalogue, then to English.
+
+Strings come from the view (`apuLang._()`), the PHP code (`Lang::_()`), the settings form and the
+backend messages: `apufw.py` writes each message with its English template and arguments
+(`message_t`), translated by the web interface.
+
+```sh
+python3 -I plugin/lang.py update    # add the new strings to each .po, to translate
+python3 -I plugin/lang.py check     # what the CI checks: everything translated, same placeholders
+```
+
+To add a language, copy `fr_FR.po` to `<lang>.po` (OPNsense language code, e.g. `de_DE`) and
+translate every `msgstr`.
 
 ## Known limitations
 
