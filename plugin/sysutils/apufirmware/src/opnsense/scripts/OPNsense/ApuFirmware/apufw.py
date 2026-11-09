@@ -123,6 +123,40 @@ def version_tuple(text):
     return tuple(int(x) for x in found[-1].split('.')) if found else None
 
 
+def version_key(text):
+    """Orderable version, suffix included: '26.09.00.01-rc4' < '26.09.00.01'.
+
+    A final release comes after its release candidates (-rcN), which come after a build
+    of the release branch (-unreleased). None when no version is found.
+    """
+    found = re.findall(r'v?(\d+(?:\.\d+)+)(-rc\d+|-unreleased)?', text or '', re.I)
+    if not found:
+        return None
+    number, suffix = found[-1]
+    suffix = suffix.lower()
+    if suffix.startswith('-rc'):
+        stage = (1, int(suffix[3:]))
+    elif suffix == '-unreleased':
+        stage = (0, 0)
+    else:
+        stage = (2, 0)
+    return tuple(int(x) for x in number.split('.')), stage
+
+
+def current_key(status):
+    """Version key of the running firmware.
+
+    Dasharo SeaBIOS release candidates report the final version in SMBIOS
+    (v26.09.00.01 for 26.09.00.01-rc4): the label flashed by this plugin, when it
+    has the same number, tells them apart.
+    """
+    key = version_key(status.get('bios_version'))
+    installed = version_key(status.get('installed_label'))
+    if key and installed and installed[0] == key[0] and key[1] == (2, 0):
+        return installed
+    return key
+
+
 def family(ver):
     """Firmware family of a version tuple: legacy PC Engines, Dasharo SeaBIOS or UEFI."""
     if not ver:
@@ -279,16 +313,16 @@ def latest_release(cfg, board):
             continue
         if rel.get('prerelease') and cfg['prerelease'] != '1':
             continue
-        label = tag[len(prefix):]                       # 24.08.00.01[-unreleased]
-        ver = version_tuple(label.split('-')[0])
-        if not ver:
+        label = tag[len(prefix):]                       # 24.08.00.01[-rcN|-unreleased]
+        key = version_key(label)
+        if not key:
             continue
         rom_name = 'pcengines_%s_%s_v%s.rom' % (board, cfg['variant'], label)
         assets = {a['name']: a for a in rel.get('assets', [])}
         if rom_name not in assets or 'SHA256SUMS' not in assets:
             continue
-        if best is None or ver > best['ver']:
-            best = {'ver': ver, 'label': label, 'tag': tag, 'url': rel.get('html_url'),
+        if best is None or key > best['key']:
+            best = {'ver': key[0], 'key': key, 'label': label, 'tag': tag, 'url': rel.get('html_url'),
                     'rom': assets[rom_name], 'sums': assets['SHA256SUMS']}
     return best
 
@@ -312,13 +346,14 @@ def cmd_status():
     if status.get('needs_coldreset') and status.get('pending_version') == hw['current_version']:
         status['needs_coldreset'] = False
         status['pending_version'] = None
+        status['installed_label'] = status.pop('pending_label', None)
         status['state'] = 'idle'
         status['message'] = 'Firmware %s is running.' % hw['bios_version']
         save_status(status)
-    if hw['current_version'] and status.get('latest_version'):
+    latest = version_key(status.get('latest_label') or status.get('latest_version'))
+    if hw['current_version'] and latest:
         status['update_available'] = (
-            version_tuple(status['latest_version']) > version_tuple(hw['current_version'])
-            and not status.get('needs_coldreset', False))
+            latest > current_key(status) and not status.get('needs_coldreset', False))
     status.setdefault('state', 'idle')
     if status['state'] == 'running' and not _locked():
         status['state'] = 'error'
@@ -365,7 +400,7 @@ def cmd_check():
             status['latest_url'] = rel['url']
             status['update_available'] = (
                 status['current_version'] is not None
-                and rel['ver'] > version_tuple(status['current_version'])
+                and rel['key'] > current_key(status)
                 and not status.get('needs_coldreset', False))
         elif not status['check_error']:
             status['check_error'] = 'No release for %s (%s) in %s.' % (
@@ -475,6 +510,7 @@ def _flash():
     status['needs_coldreset'] = True
     status['update_available'] = False
     status['pending_version'] = status['latest_version']
+    status['pending_label'] = rel['label']
     status['message'] = 'Firmware %s written and verified. A cold reset is required.' % rel['label']
     save_status(status)
     log(status['message'])

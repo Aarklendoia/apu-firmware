@@ -35,6 +35,16 @@ UEFI_ROM = fmap_rom(b'$GBB key 1', b'\x01')
 UEFI_NAME = 'pcengines_apu4_uefi_v0.9.1.rom'
 SEEN = []          # (path, authorization header) of every request
 BAD_SUMS = {'on': False}
+EXTRA = []         # releases added by a test, served before the others (newest first, like GitHub)
+
+
+def rc_release(tag, board='apu4', prerelease=True):
+    """Release whose ROM is served by the generic /asset/rom:<name> endpoint."""
+    variant, label = tag.split('-v', 1)
+    name = 'pcengines_%s_%s_v%s.rom' % (board, variant, label)
+    return {'tag_name': tag, 'draft': False, 'prerelease': prerelease, 'html_url': tag,
+            'assets': [{'name': name, 'url': '/asset/rom:' + name},
+                       {'name': 'SHA256SUMS', 'url': '/asset/sums:' + name}]}
 
 
 class Fake(http.server.BaseHTTPRequestHandler):
@@ -45,7 +55,7 @@ class Fake(http.server.BaseHTTPRequestHandler):
         SEEN.append((self.path, self.headers.get('Authorization')))
         base = 'http://127.0.0.1:%d' % self.server.server_port
         if self.path.startswith('/repos/me/apu-firmware/releases'):
-            rels = [
+            rels = [dict(r, assets=[dict(a, url=base + a['url']) for a in r['assets']]) for r in EXTRA] + [
                 {'tag_name': 'seabios-v24.05.00.01', 'draft': False, 'prerelease': False,
                  'html_url': 'x', 'assets': [
                      {'name': 'pcengines_apu4_seabios_v24.05.00.01.rom', 'url': base + '/asset/old'},
@@ -57,6 +67,7 @@ class Fake(http.server.BaseHTTPRequestHandler):
                 {'tag_name': 'uefi-v0.9.1', 'draft': False, 'prerelease': False, 'html_url': 'z',
                  'assets': [{'name': UEFI_NAME, 'url': base + '/asset/uefirom'},
                             {'name': 'SHA256SUMS', 'url': base + '/asset/uefisums'}]},
+                rc_release('seabios-v24.08.00.01-rc2'),
                 {'tag_name': 'seabios-v25.09.00.01-unreleased', 'draft': False, 'prerelease': True,
                  'html_url': 'y', 'assets': [
                      {'name': 'pcengines_apu4_seabios_v25.09.00.01-unreleased.rom', 'url': base + '/asset/pre'},
@@ -75,6 +86,10 @@ class Fake(http.server.BaseHTTPRequestHandler):
                 self.end_headers()
                 return
             what = self.path[len('/signed/'):]
+            if what.startswith('rom:'):
+                return self._send(ROM)
+            if what.startswith('sums:'):
+                return self._send(('%s  %s\n' % (hashlib.sha256(ROM).hexdigest(), what[5:])).encode())
             if what == 'rom':
                 return self._send(ROM)
             if what == 'uefirom':
@@ -311,6 +326,66 @@ config(pre='1')
 hw('apu4', 'v24.08.00.01')
 _, st = run('check')
 check('prerelease: offered when enabled', st.get('latest_label') == '25.09.00.01-unreleased', st)
+config()
+
+# 10a. version order: final > rcN > rc(N-1) > unreleased build of the release branch
+sys.path.insert(0, os.path.dirname(os.path.abspath(SCRIPT)))
+import apufw  # noqa: E402
+order = ['24.08.00.01-unreleased', '24.08.00.01-rc1', '24.08.00.01-rc2', '24.08.00.01-rc10', '24.08.00.01',
+         '25.09.00.01-unreleased', '26.09.00.01-rc4', '26.09.00.01']
+keys = [apufw.version_key(v) for v in order]
+check('version order with suffixes', keys == sorted(keys), list(zip(order, keys)))
+check('version key from SMBIOS (UEFI rc)',
+      apufw.version_key('Dasharo (coreboot+UEFI) v0.9.1-rc3') == ((0, 9, 1), (1, 3)),
+      apufw.version_key('Dasharo (coreboot+UEFI) v0.9.1-rc3'))
+
+# 10b. an rc older than the installed final release is never offered
+reset_state()
+config(pre='1')
+hw('apu4', 'v24.08.00.01')
+_, st = run('check')
+check('rc of the installed version: not offered', st.get('latest_label') != '24.08.00.01-rc2', st)
+
+# 10c. SeaBIOS rc: flashed, reported as the final version in SMBIOS, final offered later
+EXTRA[:] = [rc_release('seabios-v26.09.00.01-rc4')]
+reset_state()
+hw('apu4', 'v24.08.00.01')
+_, st = run('check')
+check('rc: newest rc offered', st.get('latest_label') == '26.09.00.01-rc4' and st['update_available'], st)
+code, _ = run('flash')
+check('rc: flash succeeds', code == 0, open(env['APUFW_LOG']).read())
+hw('apu4', 'v26.09.00.01')                      # what a 26.09.00.01-rc4 SeaBIOS reports
+_, st = run('status')
+check('rc: cold reset done, rc label remembered',
+      not st['needs_coldreset'] and st.get('installed_label') == '26.09.00.01-rc4', st)
+check('rc: up to date while no final exists', st['update_available'] is False, st)
+EXTRA.insert(0, rc_release('seabios-v26.09.00.01', prerelease=False))
+_, st = run('check')
+check('rc: final offered over the installed rc',
+      st.get('latest_label') == '26.09.00.01' and st['update_available'] is True, st)
+config()                                        # release candidates off: the final is still offered
+_, st = run('check')
+check('rc: final offered with release candidates off',
+      st.get('latest_label') == '26.09.00.01' and st['update_available'] is True, st)
+code, _ = run('flash')
+_, st = run('status')
+check('rc -> final: cold reset done, final label', st.get('installed_label') == '26.09.00.01', st)
+check('rc -> final: up to date', st['update_available'] is False, st)
+
+# 10d. rc not offered when release candidates are off
+reset_state()
+EXTRA[:] = [rc_release('seabios-v26.09.00.01-rc4')]
+hw('apu4', 'v24.08.00.01')
+_, st = run('check')
+check('rc off: rc ignored', st.get('latest_label') == '24.08.00.01' and st['update_available'] is False, st)
+
+# 10e. UEFI rc reports its suffix: the final release is offered
+reset_state()
+EXTRA[:] = []
+config(variant='uefi')
+hw('apu4', 'Dasharo (coreboot+UEFI) v0.9.1-rc3')
+_, st = run('check')
+check('uefi rc3 -> final 0.9.1 offered', st.get('latest_label') == '0.9.1' and st['update_available'] is True, st)
 config()
 
 # 11. private repo token sent to API only
