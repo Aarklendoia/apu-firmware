@@ -81,6 +81,35 @@ use_mirrors() {
   fi
 }
 
+# build.sh runs the dasharo-sdk container with -u $UID, but the image only has a
+# "coreboot" user with uid 1000. Since v1.9.x its home is mode 700, and any other uid
+# (1001 on GitHub runners) can neither read the mounted sources nor write a cache
+# (HOME=/ for an unknown uid). For another uid, build a local image where the coreboot
+# user has that uid, and point build.sh at it (it honours DASHARO_SDK). The toolchain
+# is unchanged, so is the ROM.
+SDK_NOTE=
+prepare_sdk() {
+  local img uid; uid=$(id -u)
+  img=$(sed -n 's/^DASHARO_SDK=\${DASHARO_SDK:-"\(.*\)"}$/\1/p' build.sh | head -1)
+  [[ -n $img ]] || return 0
+  docker image inspect "$img" >/dev/null 2>&1 || docker pull -q "$img" >/dev/null
+  [[ $(docker run --rm "$img" id -u coreboot) == "$uid" ]] && return 0
+  local fixed="apu-fw-sdk:${img##*:}-uid$uid"
+  log "$img: coreboot user is not uid $uid, building $fixed"
+  # usermod would chown the 1.7 GB Rust toolchain in the home: change the uid in passwd
+  # and give it the directories only (the toolchain files stay readable by everyone)
+  docker build -q -t "$fixed" - >/dev/null <<EOF
+FROM $img
+USER root
+RUN sed -i 's/^coreboot:\([^:]*\):[0-9]*:/coreboot:\\1:$uid:/' /etc/passwd \\
+ && find /home/coreboot -xdev -type d -exec chown $uid {} + \\
+ && chown $uid /home/coreboot/.[!.]*
+USER coreboot
+EOF
+  export DASHARO_SDK=$fixed
+  SDK_NOTE="toolchain-fix   $fixed = $img with the coreboot user moved to uid $uid"
+}
+
 build_seabios() {
   local ver=$1 base=${1%-unreleased} src=$WORKDIR/src/seabios-$1
   local cbtag=${base%.*.*}                         # 24.08.00.01 -> 24.08
@@ -120,6 +149,7 @@ build_seabios() {
   SOURCES="coreboot        $CB_UPSTREAM tag $cbtag ($(git rev-parse "$cbtag^{commit}"))
 dasharo-pq      $PQ_REPO $pqref ($(git -C "$pq" rev-parse HEAD))
 patched tree    tag v$base ($(git rev-parse HEAD)), patches applied with $PATCH_TOOL"
+  prepare_sdk
   BUILD_TIMELESS=1 ./build.sh "seabios_$BOARD"
 }
 
@@ -134,6 +164,7 @@ build_uefi() {
   # no BUILD_TIMELESS: it would replace the version (firmware ID) with -TIMELESS--LESSTIME-.
   # The build stays reproducible: coreboot takes the version from git describe and the
   # date from the commit.
+  prepare_sdk
   ./build.sh "$BOARD"
 }
 
@@ -160,6 +191,7 @@ do_build() {
     echo "$SOURCES"
     git submodule status 2>/dev/null | sed 's/^/submodule /'
     grep -h 'DASHARO_SDK=' build.sh 2>/dev/null | head -1 | sed 's/^/toolchain /'
+    [[ -z $SDK_NOTE ]] || echo "$SDK_NOTE"
   } > "$OUTDIR/$name.sources"
   local official; official=$(official_check "$ver" "$OUTDIR/$name")
   log "official build: $official"
