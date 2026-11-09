@@ -134,8 +134,10 @@ jobs:
               sysrc -q configd_enable=YES
               export APUFW_URL="file://$PWD/repo"
               pkg add dist/*.pkg
+              echo "after pkg add: $(pkg query '%n-%v from %R' os-apufirmware)"
               [ "$(pkg query %R os-apufirmware)" != ApuFirmware ] || { echo 'pkg add already gives the repository'; exit 1; }
               sh plugin/install.sh
+              echo "after install.sh: $(pkg query '%n-%v from %R' os-apufirmware)"
               [ "$(pkg query %R os-apufirmware)" = ApuFirmware ] || { echo 'not moved to the repository'; exit 1; }
               sh plugin/install.sh | grep -q 'already installed from ApuFirmware' || { echo 'second run reinstalled'; exit 1; }
               pkg delete -y os-apufirmware flashrom        # a router where nothing is installed yet

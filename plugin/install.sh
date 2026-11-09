@@ -75,14 +75,20 @@ version=$(pkg rquery -r "$NAME" %v "$PKG")
 installed=$(pkg query %v "$PKG" 2>/dev/null || true)
 from=$(pkg query %R "$PKG" 2>/dev/null || true)
 
-if [ "$installed" = "$version" ] && [ "$from" = "$NAME" ]; then
+# an install made by hand (pkg add, older install.sh) stays tied to no repository, even
+# when reinstalled: remove it first, like "make upgrade" in opnsense/plugins. The settings
+# stay in config.xml.
+if [ -n "$installed" ] && [ "$from" != "$NAME" ]; then
+    echo "Moving $PKG $installed ($from) to the $NAME repository"
+    pkg delete -fy "$PKG"
+fi
+
+if [ "$(pkg query %v "$PKG" 2>/dev/null || true)" = "$version" ]; then
     echo "$PKG $version is already installed from $NAME."
 else
     # -r also limits the dependencies to this repository: flashrom comes from OPNsense's
     pkg info -q flashrom || pkg install -y flashrom
-    # -f: an install made by hand (or an older version) is replaced by the repository's,
-    # so that later updates come from it. The settings stay in config.xml.
-    pkg install -fy -r "$NAME" "$PKG"
+    pkg install -y -r "$NAME" "$PKG"
 fi
 
 # record the plugin in config.xml, as System > Firmware > Plugins does, otherwise it is
