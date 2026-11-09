@@ -129,7 +129,7 @@ jobs:
               mkdir -p /usr/local/opnsense/scripts/firmware
               printf '#!/bin/sh\necho "register $*" >> /tmp/register.log\n' > /usr/local/opnsense/scripts/firmware/register.php
               chmod +x /usr/local/opnsense/scripts/firmware/register.php
-              printf '#!/bin/sh\n. /etc/rc.subr\nname=configd\nrcvar=configd_enable\nstart_cmd=:\nstop_cmd=:\nrun_rc_command "$1"\n' > /usr/local/etc/rc.d/configd
+              printf '#!/bin/sh\n. /etc/rc.subr\nname=configd\nrcvar=configd_enable\nload_rc_config $name\nstart_cmd=:\nstop_cmd=:\nrun_rc_command "$1"\n' > /usr/local/etc/rc.d/configd
               chmod +x /usr/local/etc/rc.d/configd
               sysrc -q configd_enable=YES
               export APUFW_URL="file://$PWD/repo"

@@ -46,6 +46,7 @@ rFnDw2VoLv++yDKeGsq7GsMCAwEAAQ==
 -----END PUBLIC KEY-----'
 # END PUBLIC KEY
 
+mkdir -p "${KEY%/*}"
 if [ -n "${APUFW_PUBKEY:-}" ]; then
     cp "$APUFW_PUBKEY" "$KEY"
 elif [ "$REPO" = Aarklendoia/apu-firmware ]; then
