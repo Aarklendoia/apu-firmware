@@ -442,8 +442,8 @@ def cmd_check():
                 and rel['key'] > current_key(status)
                 and not status.get('needs_coldreset', False))
         elif not status['check_error']:
-            status['check_error'] = M('No release for %s (%s) in %s.',
-                status['board'], cfg['variant'], cfg['repository'])
+            status['check_error'] = M('No release for %s (%s) in %s.', status['board'], cfg['variant'],
+                                      cfg['repository'])
     save_status(status)
     return status
 
@@ -513,8 +513,8 @@ def _flash():
     with open(rom, 'rb') as f:
         actual = hashlib.sha256(f.read()).hexdigest()
     if not expected or expected != actual:
-        return _fail(status, M('Checksum mismatch for %s (expected %s, got %s).',
-            rel['rom']['name'], expected, actual))
+        return _fail(status, M('Checksum mismatch for %s (expected %s, got %s).', rel['rom']['name'],
+                               expected, actual))
     log('sha256 OK: %s' % actual)
 
     status['message'] = M('Backing up the current firmware')
