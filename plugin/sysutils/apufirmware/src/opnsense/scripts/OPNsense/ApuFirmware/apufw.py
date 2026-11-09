@@ -87,6 +87,41 @@ def run(cmd, logged=False):
     return proc.returncode, proc.stdout.strip()
 
 
+class M(str):
+    """Message shown in the web interface: the English text, which also keeps its template
+    and arguments so that the interface can translate it (OPNsense\\ApuFirmware\\Lang).
+
+    M('Download failed: %s', e) == 'Download failed: timeout'. The templates are the msgids
+    of plugin/sysutils/apufirmware/lang/*.po.
+    """
+
+    def __new__(cls, template, *args):
+        args = [a if isinstance(a, (int, float)) else str(a) for a in args]
+        self = str.__new__(cls, template % tuple(args) if args else template)
+        self.template, self.args = template, args
+        return self
+
+
+MESSAGE_KEYS = ('message', 'check_error', 'blocked_reason')
+
+
+def with_templates(status):
+    """Add <key>_t = [template, args] next to each message, drop the stale ones."""
+    for key in MESSAGE_KEYS:
+        value = status.get(key)
+        if isinstance(value, M):
+            status[key + '_t'] = [value.template, value.args]
+            continue
+        template = status.get(key + '_t')
+        try:
+            valid = isinstance(template, list) and template[0] % tuple(template[1]) == value
+        except (TypeError, ValueError, IndexError):
+            valid = False
+        if not valid:
+            status.pop(key + '_t', None)
+    return status
+
+
 def load_status():
     try:
         with open(STATUS_FILE) as f:
@@ -99,7 +134,7 @@ def save_status(status):
     os.makedirs(STATE_DIR, mode=0o700, exist_ok=True)
     tmp = STATUS_FILE + '.tmp'
     with open(tmp, 'w') as f:
-        json.dump(status, f, indent=2, sort_keys=True)
+        json.dump(with_templates(status), f, indent=2, sort_keys=True)
     os.replace(tmp, STATUS_FILE)
 
 
@@ -227,51 +262,55 @@ def fit_protection(plan, wp, rom, backup):
     start, length = wp
     if not length:
         return plan, None
-    where = 'The flash is write protected (0x%x-0x%x)' % (start, start + length - 1)
+    where = '0x%x-0x%x' % (start, start + length - 1)
     with open(rom, 'rb') as f:
         new = f.read()
     with open(backup, 'rb') as f:
         current = f.read()
     areas = fmap(new)
     if '--fmap' not in plan or not areas:
-        return None, where + ' and the whole image must be written: disable the protection.'
+        return None, M('The flash is write protected (%s) and the whole image must be written: '
+                       'disable the protection. Nothing was written.', where)
     names = plan[2::2]          # ['--fmap', '-i', A, '-i', B]
     hit = [n for n in names if n not in areas
            or (areas[n][0] < start + length and start < areas[n][0] + areas[n][1])]
     if not hit:
         return plan, None
     if hit != ['WP_RO'] or 'RW_SECTION_A' not in names:
-        return None, where + ' and covers %s: disable the protection.' % ', '.join(hit)
+        return None, M('The flash is write protected (%s) and covers %s: disable the protection. '
+                       'Nothing was written.', where, ', '.join(hit))
     # vboot: the read-only part stays and checks RW_SECTION_A with the keys of its GBB
     if fmap(current) != areas or 'GBB' not in areas:
-        return None, where + ': only RW_SECTION_A could be written, but the flash layout differs.'
+        return None, M('The flash is write protected (%s): only RW_SECTION_A could be written, but the '
+                       'flash layout differs. Nothing was written.', where)
     gbb = slice(areas['GBB'][0], areas['GBB'][0] + areas['GBB'][1])
     if current[gbb] != new[gbb]:
-        return None, where + ': only RW_SECTION_A could be written, but it is signed with other keys ' \
-                             'than the read-only part (GBB), which would reject it.'
-    log('%s: WP_RO is kept, only RW_SECTION_A is written' % where)
+        return None, M('The flash is write protected (%s): only RW_SECTION_A could be written, but it is '
+                       'signed with other keys than the read-only part (GBB), which would reject it. '
+                       'Nothing was written.', where)
+    log('The flash is write protected (%s): WP_RO is kept, only RW_SECTION_A is written' % where)
     return ['--fmap', '-i', 'RW_SECTION_A'], None
 
 
 def flash_plan(hw, variant):
     """Return (flashrom arguments, reason it is blocked or None)."""
     if not hw['board']:
-        return None, 'This is not a PC Engines apu2/3/4/6 board.'
+        return None, M('This is not a PC Engines apu2/3/4/6 board.')
     if not hw['flashrom_installed']:
-        return None, 'flashrom is not installed.'
+        return None, M('flashrom is not installed.')
     fam = hw['current_family']
     if fam is None:
-        return None, 'The current firmware version could not be read.'
+        return None, M('The current firmware version could not be read.')
     if variant == 'seabios':
         if fam == 'uefi':
-            return None, 'Switching from UEFI to SeaBIOS must be done manually.'
+            return None, M('Switching from UEFI to SeaBIOS must be done manually.')
         if fam == 'seabios':
             # Dasharo to Dasharo: only the code region, settings (boot order, knobs) are kept
             return ['--fmap', '-i', 'COREBOOT'], None
         # original PC Engines firmware: full image (Dasharo initial deployment)
         return [], None
     if fam != 'uefi':
-        return None, 'Switching from SeaBIOS to UEFI must be done manually (OPNsense must boot in UEFI mode).'
+        return None, M('Switching from SeaBIOS to UEFI must be done manually (OPNsense must boot in UEFI mode).')
     return ['--fmap', '-i', 'WP_RO', '-i', 'RW_SECTION_A'], None
 
 
@@ -348,7 +387,7 @@ def cmd_status():
         status['pending_version'] = None
         status['installed_label'] = status.pop('pending_label', None)
         status['state'] = 'idle'
-        status['message'] = 'Firmware %s is running.' % hw['bios_version']
+        status['message'] = M('Firmware %s is running.', hw['bios_version'])
         save_status(status)
     latest = version_key(status.get('latest_label') or status.get('latest_version'))
     if hw['current_version'] and latest:
@@ -357,7 +396,7 @@ def cmd_status():
     status.setdefault('state', 'idle')
     if status['state'] == 'running' and not _locked():
         status['state'] = 'error'
-        status['message'] = 'The last operation was interrupted, see the log.'
+        status['message'] = M('The last operation was interrupted, see the log.')
         save_status(status)
     return status
 
@@ -384,15 +423,15 @@ def cmd_check():
     _, status['blocked_reason'] = flash_plan(status, cfg['variant'])
 
     if not cfg['repository']:
-        status['check_error'] = 'No GitHub repository configured.'
+        status['check_error'] = M('No GitHub repository configured.')
     elif not status['board']:
-        status['check_error'] = 'Unsupported board.'
+        status['check_error'] = M('Unsupported board.')
     else:
         try:
             rel = latest_release(cfg, status['board'])
         except (urllib.error.URLError, OSError, ValueError) as e:
             rel = None
-            status['check_error'] = 'GitHub query failed: %s' % e
+            status['check_error'] = M('GitHub query failed: %s', e)
         if rel:
             status['latest_version'] = '.'.join(str(x) for x in rel['ver'])
             status['latest_label'] = rel['label']
@@ -403,7 +442,7 @@ def cmd_check():
                 and rel['key'] > current_key(status)
                 and not status.get('needs_coldreset', False))
         elif not status['check_error']:
-            status['check_error'] = 'No release for %s (%s) in %s.' % (
+            status['check_error'] = M('No release for %s (%s) in %s.',
                 status['board'], cfg['variant'], cfg['repository'])
     save_status(status)
     return status
@@ -421,7 +460,7 @@ def cmd_flash():
     try:
         return _flash()
     except Exception as e:      # never leave the state stuck on "running"
-        return _fail(load_status(), 'Unexpected error: %s' % e)
+        return _fail(load_status(), M('Unexpected error: %s', e))
 
 
 def _flash():
@@ -437,7 +476,7 @@ def _flash():
     status = cmd_check()
     cfg = settings()
     status['state'] = 'running'
-    status['message'] = 'Preparing'
+    status['message'] = M('Preparing')
     save_status(status)
     log('Board %s, firmware %s' % (status['product'], status['bios_version']))
 
@@ -447,7 +486,7 @@ def _flash():
     if status.get('check_error'):
         return _fail(status, status['check_error'])
     if not status.get('update_available'):
-        return _fail(status, 'No newer firmware is available.')
+        return _fail(status, M('No newer firmware is available.'))
 
     rel = latest_release(cfg, status['board'])
     work = os.path.join(STATE_DIR, 'download')
@@ -456,14 +495,14 @@ def _flash():
     rom = os.path.join(work, rel['rom']['name'])
     sums = os.path.join(work, 'SHA256SUMS')
 
-    status['message'] = 'Downloading %s' % rel['rom']['name']
+    status['message'] = M('Downloading %s', rel['rom']['name'])
     save_status(status)
     log(status['message'])
     try:
         download(rel['rom'], cfg['token'], rom)
         download(rel['sums'], cfg['token'], sums)
     except (urllib.error.URLError, OSError) as e:
-        return _fail(status, 'Download failed: %s' % e)
+        return _fail(status, M('Download failed: %s', e))
 
     expected = None
     with open(sums) as f:
@@ -474,11 +513,11 @@ def _flash():
     with open(rom, 'rb') as f:
         actual = hashlib.sha256(f.read()).hexdigest()
     if not expected or expected != actual:
-        return _fail(status, 'Checksum mismatch for %s (expected %s, got %s).' % (
+        return _fail(status, M('Checksum mismatch for %s (expected %s, got %s).',
             rel['rom']['name'], expected, actual))
     log('sha256 OK: %s' % actual)
 
-    status['message'] = 'Backing up the current firmware'
+    status['message'] = M('Backing up the current firmware')
     save_status(status)
     os.makedirs(BACKUP_DIR, mode=0o700, exist_ok=True)
     backup = os.path.join(BACKUP_DIR, '%s_%s_%s.rom' % (
@@ -487,7 +526,7 @@ def _flash():
     chip = flashrom_chip()
     code, _ = run(['flashrom', '-p', 'internal', '-r', backup] + chip, logged=True)
     if code != 0:
-        return _fail(status, 'Backup failed, nothing was written. Is the firmware write protection disabled?')
+        return _fail(status, M('Backup failed, nothing was written. Is the firmware write protection disabled?'))
     backups = sorted((os.path.join(BACKUP_DIR, b) for b in os.listdir(BACKUP_DIR)), key=os.path.getmtime)
     for old in backups[:-KEEP_BACKUPS]:
         os.unlink(old)
@@ -495,23 +534,23 @@ def _flash():
 
     plan, error = fit_protection(plan, write_protection(chip), rom, backup)
     if error:
-        return _fail(status, error + ' Nothing was written.')
+        return _fail(status, error)
 
-    status['message'] = 'Writing %s' % rel['rom']['name']
+    status['message'] = M('Writing %s', rel['rom']['name'])
     save_status(status)
     code, out = run(['flashrom', '-p', 'internal', '-w', rom] + plan + chip, logged=True)
     if code != 0:
         if 'Erasing and writing flash chip' in out:
-            return _fail(status, 'flashrom failed while writing. DO NOT REBOOT: retry the update, '
-                                 'or restore %s with flashrom.' % backup)
-        return _fail(status, 'flashrom failed before writing, the firmware is unchanged.')
+            return _fail(status, M('flashrom failed while writing. DO NOT REBOOT: retry the update, '
+                                   'or restore %s with flashrom.', backup))
+        return _fail(status, M('flashrom failed before writing, the firmware is unchanged.'))
 
     status['state'] = 'flashed'
     status['needs_coldreset'] = True
     status['update_available'] = False
     status['pending_version'] = status['latest_version']
     status['pending_label'] = rel['label']
-    status['message'] = 'Firmware %s written and verified. A cold reset is required.' % rel['label']
+    status['message'] = M('Firmware %s written and verified. A cold reset is required.', rel['label'])
     save_status(status)
     log(status['message'])
     return 0
@@ -538,9 +577,9 @@ def cmd_coldreset():
 def main():
     action = sys.argv[1] if len(sys.argv) > 1 else 'status'
     if action == 'status':
-        print(json.dumps(cmd_status()))
+        print(json.dumps(with_templates(cmd_status())))
     elif action == 'check':
-        print(json.dumps(cmd_check()))
+        print(json.dumps(with_templates(cmd_check())))
     elif action == 'flash':
         return cmd_flash()
     elif action == 'coldreset':

@@ -28,6 +28,7 @@
 
 namespace OPNsense\ApuFirmware\Api;
 
+use OPNsense\ApuFirmware\Lang;
 use OPNsense\Base\ApiControllerBase;
 use OPNsense\Core\Backend;
 
@@ -36,7 +37,7 @@ class ServiceController extends ApiControllerBase
     private function decode($output)
     {
         $result = json_decode(trim($output), true);
-        return is_array($result) ? $result : ['state' => 'error', 'message' => trim($output)];
+        return is_array($result) ? Lang::status($result) : ['state' => 'error', 'message' => trim($output)];
     }
 
     /* local state, no network */

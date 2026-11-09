@@ -28,6 +28,7 @@
 
 namespace OPNsense\System\Status;
 
+use OPNsense\ApuFirmware\Lang;
 use OPNsense\System\AbstractStatus;
 use OPNsense\System\SystemStatusCode;
 
@@ -36,7 +37,7 @@ class ApuFirmwareStatus extends AbstractStatus
     public function __construct()
     {
         $this->internalPriority = 50;
-        $this->internalTitle = gettext('APU coreboot firmware');
+        $this->internalTitle = Lang::_('APU coreboot firmware');
         $this->internalLocation = '/ui/apufirmware';
     }
 
@@ -50,20 +51,21 @@ class ApuFirmwareStatus extends AbstractStatus
         if (!is_array($status)) {
             return;
         }
+        $status = Lang::status($status);
         $this->internalTimestamp = filemtime($file);
 
         if (!empty($status['needs_coldreset'])) {
             $this->internalStatus = SystemStatusCode::WARNING;
-            $this->internalMessage = gettext(
+            $this->internalMessage = Lang::_(
                 'New firmware has been written. A cold reset is required to start it.'
             );
         } elseif (($status['state'] ?? '') == 'error') {
             $this->internalStatus = SystemStatusCode::WARNING;
-            $this->internalMessage = sprintf(gettext('Firmware update failed: %s'), $status['message'] ?? '');
+            $this->internalMessage = sprintf(Lang::_('Firmware update failed: %s'), $status['message'] ?? '');
         } elseif (!empty($status['update_available'])) {
             $this->internalStatus = SystemStatusCode::NOTICE;
             $this->internalMessage = sprintf(
-                gettext('Firmware %s is available (installed: %s).'),
+                Lang::_('Firmware %s is available (installed: %s).'),
                 $status['latest_label'] ?? $status['latest_version'] ?? '?',
                 $status['bios_version'] ?? '?'
             );

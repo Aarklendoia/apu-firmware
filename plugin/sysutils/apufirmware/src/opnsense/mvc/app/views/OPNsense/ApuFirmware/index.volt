@@ -27,25 +27,25 @@
 <div class="content-box" style="padding-bottom: 1.5em;">
     <table class="table table-condensed" id="apufw_status">
         <thead>
-            <tr><th colspan="2">{{ lang._('Firmware') }}</th></tr>
+            <tr><th colspan="2">{{ apuLang._('Firmware') }}</th></tr>
         </thead>
         <tbody>
-            <tr><td style="width:22%">{{ lang._('Board') }}</td><td id="st_board"></td></tr>
-            <tr><td>{{ lang._('Installed') }}</td><td id="st_current"></td></tr>
-            <tr><td>{{ lang._('Latest build') }}</td><td id="st_latest"></td></tr>
-            <tr><td>{{ lang._('Last check') }}</td><td id="st_checked"></td></tr>
-            <tr><td>{{ lang._('Status') }}</td><td id="st_message"></td></tr>
+            <tr><td style="width:22%">{{ apuLang._('Board') }}</td><td id="st_board"></td></tr>
+            <tr><td>{{ apuLang._('Installed') }}</td><td id="st_current"></td></tr>
+            <tr><td>{{ apuLang._('Latest build') }}</td><td id="st_latest"></td></tr>
+            <tr><td>{{ apuLang._('Last check') }}</td><td id="st_checked"></td></tr>
+            <tr><td>{{ apuLang._('Status') }}</td><td id="st_message"></td></tr>
         </tbody>
     </table>
     <div class="col-md-12">
         <button class="btn btn-default" id="btn_check" type="button">
-            <i class="fa fa-refresh fa-fw"></i> {{ lang._('Check now') }}
+            <i class="fa fa-refresh fa-fw"></i> {{ apuLang._('Check now') }}
         </button>
         <button class="btn btn-primary" id="btn_update" type="button" disabled="disabled">
-            <i class="fa fa-download fa-fw"></i> {{ lang._('Update firmware') }}
+            <i class="fa fa-download fa-fw"></i> {{ apuLang._('Update firmware') }}
         </button>
         <button class="btn btn-warning" id="btn_coldreset" type="button" style="display:none">
-            <i class="fa fa-power-off fa-fw"></i> {{ lang._('Cold reset') }}
+            <i class="fa fa-power-off fa-fw"></i> {{ apuLang._('Cold reset') }}
         </button>
         <i id="apufw_spinner" class="fa fa-spinner fa-pulse" style="display:none"></i>
     </div>
@@ -70,7 +70,7 @@ $(document).ready(function () {
     }
 
     function render(st) {
-        setText('st_board', st.product ? st.product : tr('{{ lang._('Not a PC Engines APU') }}'));
+        setText('st_board', st.product ? st.product : tr('{{ apuLang._('Not a PC Engines APU') }}'));
         setText('st_current', st.bios_version);
 
         let latest = $('#st_latest').empty();
@@ -79,7 +79,7 @@ $(document).ready(function () {
             if (st.latest_url) { link.attr('href', st.latest_url); }
             latest.append(link);
             if (st.update_available) {
-                latest.append(' ').append($('<span class="label label-success">').text(tr('{{ lang._('new') }}')));
+                latest.append(' ').append($('<span class="label label-success">').text(tr('{{ apuLang._('new') }}')));
             }
         } else {
             latest.text('-');
@@ -90,9 +90,9 @@ $(document).ready(function () {
         let msg = st.message || '';
         if (st.check_error) { msg = st.check_error; }
         else if (st.state === 'idle' && st.blocked_reason) { msg = st.blocked_reason; }
-        else if (st.state === 'idle' && !msg && !st.checked_at) { msg = tr('{{ lang._('Not checked yet.') }}'); }
+        else if (st.state === 'idle' && !msg && !st.checked_at) { msg = tr('{{ apuLang._('Not checked yet.') }}'); }
         else if (st.state === 'idle' && !msg) {
-            msg = st.update_available ? tr('{{ lang._('An update is available.') }}') : tr('{{ lang._('Up to date.') }}');
+            msg = st.update_available ? tr('{{ apuLang._('An update is available.') }}') : tr('{{ apuLang._('Up to date.') }}');
         }
         setText('st_message', msg);
         $('#st_message').toggleClass('text-danger', st.state === 'error' || !!st.check_error);
@@ -140,9 +140,9 @@ $(document).ready(function () {
 
     $('#btn_update').click(function () {
         stdDialogConfirm(
-            '{{ lang._('Update firmware') }}',
-            '{{ lang._('The current firmware will be backed up, then the new one written and verified. Do not cut the power during the update. A cold reset is needed afterwards to start the new firmware. Continue?') }}',
-            '{{ lang._('Update') }}', '{{ lang._('Cancel') }}',
+            '{{ apuLang._('Update firmware') }}',
+            '{{ apuLang._('The current firmware will be backed up, then the new one written and verified. Do not cut the power during the update. A cold reset is needed afterwards to start the new firmware. Continue?') }}',
+            '{{ apuLang._('Update') }}', '{{ apuLang._('Cancel') }}',
             function () {
                 ajaxCall('/api/apufirmware/service/update', {}, function () {
                     $('#apufw_log').text('');
@@ -154,13 +154,13 @@ $(document).ready(function () {
 
     $('#btn_coldreset').click(function () {
         stdDialogConfirm(
-            '{{ lang._('Cold reset') }}',
-            '{{ lang._('Services will be stopped and the board powered off for a few seconds, then it will boot the new firmware. The network will be down for a few minutes. Continue?') }}',
-            '{{ lang._('Cold reset') }}', '{{ lang._('Cancel') }}',
+            '{{ apuLang._('Cold reset') }}',
+            '{{ apuLang._('Services will be stopped and the board powered off for a few seconds, then it will boot the new firmware. The network will be down for a few minutes. Continue?') }}',
+            '{{ apuLang._('Cold reset') }}', '{{ apuLang._('Cancel') }}',
             function () {
                 ajaxCall('/api/apufirmware/service/coldreset', {}, function () {
                     $('#btn_coldreset').prop('disabled', true);
-                    setText('st_message', tr('{{ lang._('Restarting. Reload this page in a few minutes.') }}'));
+                    setText('st_message', tr('{{ apuLang._('Restarting. Reload this page in a few minutes.') }}'));
                 });
             }, 'warning');
     });

@@ -35,6 +35,13 @@ jobs:
       - name: Backend tests
         run: python3 -I plugin/tests/test_apufw.py plugin/sysutils/apufirmware/src/opnsense/scripts/OPNsense/ApuFirmware/apufw.py
 
+      # every string translated in each plugin/sysutils/apufirmware/lang/*.po, same placeholders
+      - name: Translations
+        run: |
+          sudo apt-get install -y -qq gettext >/dev/null
+          python3 -I plugin/lang.py check
+          python3 -I plugin/lang.py build "$RUNNER_TEMP/locale"
+
   release-please:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
@@ -69,6 +76,12 @@ jobs:
           [ -n "$version" ] || { echo "::error::PLUGIN_VERSION not found"; exit 1; }
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
+      # gettext catalogues, installed with the package in /usr/local/share/locale
+      - name: Translations
+        run: |
+          sudo apt-get install -y -qq gettext >/dev/null
+          python3 -I plugin/lang.py build plugin/sysutils/apufirmware/src/share/locale
+
       # The pkg repository is signed with PKG_SIGNING_KEY (not available to PRs from forks).
       # Its public part must be the key embedded in install.sh, which routers trust.
       - name: Signing key
@@ -102,6 +115,8 @@ jobs:
             pkg info -F dist/*.pkg
             [ "$(pkg query -F dist/*.pkg %n)" = os-apufirmware ] || { echo 'unexpected package name'; exit 1; }
             pkg query -F dist/*.pkg 'abi: %q' | grep -qi 'freebsd:\*:\*' || { echo 'package is tied to an ABI'; exit 1; }
+            pkg query -F dist/*.pkg %Fp | grep -qx '/usr/local/share/locale/fr_FR/LC_MESSAGES/apufirmware.mo' \
+              || { echo 'translations missing from the package'; exit 1; }
 
             # signed pkg repository, checked with pkg itself as a router would
             if [ -f .signing.key ]; then
