@@ -16,7 +16,7 @@ sources, and an **OPNsense** plugin to install it from the web interface.
 .github/workflows/plugin.yml     plugin lint, tests, package and release
 scripts/apu-fw                   firmware build (also usable locally, see its header)
 plugin/sysutils/apufirmware/     OPNsense plugin sources
-plugin/install.sh                plugin installation on the router
+plugin/install.sh                adds the signed package repository and installs the plugin
 plugin/tests/                    backend tests (fake flashrom, fake GitHub)
 ```
 
@@ -59,20 +59,31 @@ build kept as a workflow artifact, no release) to investigate such differences.
 
 ## Installing the plugin on OPNsense
 
-Over SSH on the router, as root:
+Once, over SSH on the router, as root:
 
 ```sh
 fetch -o - https://raw.githubusercontent.com/Aarklendoia/apu-firmware/main/plugin/install.sh | sh
 ```
 
-The script downloads the `os-apufirmware` package from the latest `plugin-v*` release, installs
-`flashrom`, replaces the installed version and reloads configd. Run the same command to update the
-plugin. Optional variables: `APUFW_REPO=<owner>/<repo>` for a fork, `APUFW_TOKEN=<token>` for a
-private repository.
+The script adds this repository's signed package repository to OPNsense
+(`/usr/local/etc/pkg/repos/ApuFirmware.conf`, served by GitHub Pages at
+`https://aarklendoia.github.io/apu-firmware/pkg/`, public key in
+`/usr/local/etc/ssl/ApuFirmware.pub`), installs `flashrom` and `os-apufirmware`, and reloads
+configd. The plugin is then listed under **System → Firmware → Plugins**, and its updates come with
+the OPNsense updates (**System → Firmware → Updates**). Running the script again is harmless; on a
+router where the plugin was installed by an older version of the script, it moves the install to
+the repository (the settings are kept).
+
+The repository is signed with the `PKG_SIGNING_KEY` secret. The CI checks that it matches the
+public key embedded in `install.sh`, then checks the signed repository with `pkg` itself, with that
+key (accepted) and another one (rejected). A fork needs its own key pair: `APUFW_REPO=<owner>/<repo>`
+and `APUFW_PUBKEY=<public key file>`, its own `PKG_SIGNING_KEY` secret and its `DEFAULT_KEY` in
+`install.sh`, and GitHub Pages enabled with **Source: GitHub Actions**.
 
 Then open **System → Firmware → APU coreboot**, enter the repository (`Aarklendoia/apu-firmware`)
-and save. A check starts immediately. The access token is only needed for a private repository:
-use a fine-grained token limited to that repository with **Contents: Read-only**.
+and save. A check starts immediately. The access token is only needed if the firmware releases
+come from a private repository: use a fine-grained token limited to that repository with
+**Contents: Read-only**. The package repository itself needs a public repository (GitHub Pages).
 
 ### Plugin versions
 

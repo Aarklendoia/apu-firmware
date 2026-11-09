@@ -4,7 +4,8 @@ name: Plugin
 # merging, so they must run whatever files changed.
 # On main, release-please keeps a release PR up to date from the Conventional Commits
 # that touch the plugin. Merging it tags plugin-vX.Y.Z and creates the release, then the
-# package is built and attached to it.
+# package is built and attached to it, and the signed pkg repository (GitHub Pages, see
+# plugin/install.sh) is updated.
 
 on:
   push:
@@ -68,6 +69,21 @@ jobs:
           [ -n "$version" ] || { echo "::error::PLUGIN_VERSION not found"; exit 1; }
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
+      # The pkg repository is signed with PKG_SIGNING_KEY (not available to PRs from forks).
+      # Its public part must be the key embedded in install.sh, which routers trust.
+      - name: Signing key
+        env:
+          KEY: ${{ secrets.PKG_SIGNING_KEY }}
+        run: |
+          sed -n "/^DEFAULT_KEY='/,/^-----END PUBLIC KEY-----'/p" plugin/install.sh \
+            | sed -e "s/^DEFAULT_KEY='//" -e "s/'$//" > repo.pub
+          openssl rsa -pubin -in repo.pub -noout
+          if [ -z "$KEY" ]; then echo "::warning::PKG_SIGNING_KEY unavailable, repository not built"; exit 0; fi
+          umask 077
+          printf '%s\n' "$KEY" > .signing.key
+          openssl rsa -in .signing.key -pubout 2>/dev/null | cmp -s - repo.pub \
+            || { echo "::error::PKG_SIGNING_KEY does not match the public key in install.sh"; exit 1; }
+
       - name: Build (FreeBSD)
         uses: vmactions/freebsd-vm@v1
         env:
@@ -87,10 +103,68 @@ jobs:
             [ "$(pkg query -F dist/*.pkg %n)" = os-apufirmware ] || { echo 'unexpected package name'; exit 1; }
             pkg query -F dist/*.pkg 'abi: %q' | grep -qi 'freebsd:\*:\*' || { echo 'package is tied to an ABI'; exit 1; }
 
+            # signed pkg repository, checked with pkg itself as a router would
+            if [ -f .signing.key ]; then
+              mkdir -p repo/All
+              cp dist/*.pkg repo/All/
+              pkg repo repo .signing.key
+              rm -f .signing.key
+              # each check with an empty pkg database: a catalogue accepted by an earlier
+              # check must not be reused
+              check_repo() {
+                rm -rf /tmp/repos /tmp/pkgdb; mkdir /tmp/repos /tmp/pkgdb
+                printf 'ApuFirmware: { url: "file://%s/repo", signature_type: "pubkey", pubkey: "%s", enabled: yes }\n' \
+                  "$PWD" "$1" > /tmp/repos/ApuFirmware.conf
+                pkg -o PKG_DBDIR=/tmp/pkgdb -R /tmp/repos update -f -r ApuFirmware \
+                  && [ "$(pkg -o PKG_DBDIR=/tmp/pkgdb -R /tmp/repos rquery -r ApuFirmware %n os-apufirmware)" = os-apufirmware ]
+              }
+              check_repo "$PWD/repo.pub" || { echo 'signed repository rejected with the install.sh key'; exit 1; }
+              openssl genrsa -out /tmp/other.key 2048 2>/dev/null
+              openssl rsa -in /tmp/other.key -pubout -out /tmp/other.pub 2>/dev/null
+              if check_repo /tmp/other.pub; then echo 'repository accepted with another key'; exit 1; fi
+              echo 'repository signature OK'
+
+              # install.sh against this repository: move a hand-made install (pkg add, as the
+              # old install.sh did), run again, then a fresh install. OPNsense parts are stubbed.
+              mkdir -p /usr/local/opnsense/scripts/firmware
+              printf '#!/bin/sh\necho "register $*" >> /tmp/register.log\n' > /usr/local/opnsense/scripts/firmware/register.php
+              chmod +x /usr/local/opnsense/scripts/firmware/register.php
+              printf '#!/bin/sh\n. /etc/rc.subr\nname=configd\nrcvar=configd_enable\nload_rc_config $name\nstart_cmd=:\nstop_cmd=:\nrun_rc_command "$1"\n' > /usr/local/etc/rc.d/configd
+              chmod +x /usr/local/etc/rc.d/configd
+              sysrc -q configd_enable=YES
+              export APUFW_URL="file://$PWD/repo"
+              pkg add dist/*.pkg
+              echo "after pkg add: $(pkg query '%n-%v %At=%Av' os-apufirmware | tr '\n' ' ')"
+              [ "$(pkg annotate -Sq os-apufirmware repository)" != ApuFirmware ] || { echo 'pkg add already gives the repository'; exit 1; }
+              sh plugin/install.sh
+              echo "after install.sh: $(pkg query '%n-%v %At=%Av' os-apufirmware | tr '\n' ' ')"
+              [ "$(pkg annotate -Sq os-apufirmware repository)" = ApuFirmware ] || { echo 'not moved to the repository'; exit 1; }
+              sh plugin/install.sh | grep -q 'already installed from ApuFirmware' || { echo 'second run reinstalled'; exit 1; }
+              pkg delete -y os-apufirmware flashrom        # a router where nothing is installed yet
+              sh plugin/install.sh
+              pkg info -q flashrom || { echo 'flashrom not installed'; exit 1; }
+              [ "$(pkg annotate -Sq os-apufirmware repository)" = ApuFirmware ] || { echo 'fresh install failed'; exit 1; }
+              [ "$(grep -c 'register install os-apufirmware' /tmp/register.log)" = 3 ] || { echo 'not registered'; exit 1; }
+              grep -q 'url: "file://' /usr/local/etc/pkg/repos/ApuFirmware.conf
+              cmp /usr/local/etc/ssl/ApuFirmware.pub repo.pub
+              echo 'install.sh OK'
+            fi
+
+      - name: Remove the signing key
+        if: always()
+        run: rm -f .signing.key
+
       - uses: actions/upload-artifact@v7
         with:
           name: os-apufirmware-${{ steps.v.outputs.version }}
           path: dist/*.pkg
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v7
+        if: hashFiles('repo/meta.conf') != ''
+        with:
+          name: pkg-repo
+          path: repo/
           if-no-files-found: error
 
       - name: Attach to the release
@@ -101,7 +175,8 @@ jobs:
         run: |
           [ "$TAG" = "plugin-v${{ steps.v.outputs.version }}" ] || { echo "::error::$TAG does not match the Makefile"; exit 1; }
           {
-            echo "Install or update, as root on the router:"
+            echo "Install once, as root on the router (it adds the signed package repository; updates then"
+            echo "come with the OPNsense updates):"
             echo
             echo '```sh'
             echo "fetch -o - https://raw.githubusercontent.com/$GITHUB_REPOSITORY/main/plugin/install.sh | sh"
@@ -113,3 +188,33 @@ jobs:
           # "Latest" stays on the firmware releases
           gh release edit "$TAG" --title "Plugin os-apufirmware ${TAG#plugin-v}" --notes-file notes.md \
             --latest=false --repo "$GITHUB_REPOSITORY"
+
+  # GitHub Pages serve the signed pkg repository at https://<owner>.github.io/<repo>/pkg/
+  # (Settings > Pages > Source: GitHub Actions). Only for a plugin release.
+  pages:
+    needs: [release-please, package]
+    if: needs.release-please.outputs.created == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}pkg/
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: pkg-repo
+          path: site/pkg
+
+      - name: Check the repository
+        run: |
+          ls -l site/pkg site/pkg/All
+          [ -f site/pkg/meta.conf ] && ls site/pkg/All/os-apufirmware-*.pkg >/dev/null
+
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: site
+
+      - id: deploy
+        uses: actions/deploy-pages@v4
