@@ -18,6 +18,7 @@ done
 BOARD=${BOARD:-apu4}                  # apu2 | apu3 | apu4 | apu6
 VARIANT=${VARIANT:-seabios}           # seabios | uefi
 UNRELEASED=${UNRELEASED:-0}           # 1 = include rel_* branches not tagged yet
+RC=${RC:-0}                           # 1 = include release candidates (-rcN tags)
 WORKDIR=${WORKDIR:-/var/lib/apu-fw}   # sources + cache (~3 GB)
 OUTDIR=${OUTDIR:-$WORKDIR/out}        # built ROMs
 NOTIFY_URL=${NOTIFY_URL:-}            # e.g. https://ntfy.sh/my-topic or a Home Assistant webhook
@@ -40,20 +41,25 @@ case $PATCH_TOOL in am|guilt) ;; *) die "invalid PATCH_TOOL: $PATCH_TOOL";; esac
 
 # ---------------------------------------------------------------- remote versions
 # Output: one version per line, sorted, latest last.
-# Unreleased versions get a "-unreleased" suffix.
+# Release candidates keep their "-rcN" suffix, unreleased versions get "-unreleased".
+# For each version, a release wins over its release candidates, which win over an
+# unreleased build of the release branch.
 list_versions() {
+  local rc='\(-rc[0-9][0-9]*\)'
+  [[ $RC == 1 ]] || rc='\(\)'
   if [[ $VARIANT == seabios ]]; then
     git ls-remote --tags "$PQ_REPO" \
-      | sed -n 's|.*refs/tags/\([0-9][0-9]*\.[0-9][0-9]\.[0-9][0-9]\.[0-9][0-9]\)$|\1|p'
+      | sed -n "s|.*refs/tags/\\([0-9][0-9]*\\.[0-9][0-9]\\.[0-9][0-9]\\.[0-9][0-9]$rc\\{0,1\\}\\)\$|\\1|p"
     if [[ $UNRELEASED == 1 ]]; then
       git ls-remote --heads "$PQ_REPO" \
         | sed -n 's|.*refs/heads/rel_\([0-9.]*\)$|\1-unreleased|p'
     fi
   else
     git ls-remote --tags "$CB_DASHARO" \
-      | sed -n 's|.*refs/tags/pcengines_apu2_v\([0-9]*\.[0-9]*\.[0-9]*\)$|\1|p'
-  fi | sort -uV | awk -F- '
-      { b=$1; if ($0 == b) { t[b]=1; v[b]=$0 } else if (!(b in t)) v[b]=$0 }  # a tag wins over rel_
+      | sed -n "s|.*refs/tags/pcengines_apu2_v\\([0-9]*\\.[0-9]*\\.[0-9]*$rc\\{0,1\\}\\)\$|\\1|p"
+  fi | awk -F- '
+      { r = $2 == "" ? 1e9 : $2 ~ /^rc/ ? substr($2, 3) + 1 : 0    # release > rcN > unreleased
+        if (!($1 in rank) || r > rank[$1]) { rank[$1] = r; v[$1] = $0 } }
       END { for (b in v) print v[b] }' | sort -V
 }
 

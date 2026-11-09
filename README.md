@@ -31,6 +31,11 @@ only by default. Repository variables (Settings → Secrets and variables → Ac
 change that: `APU_BOARDS` for the boards, for example `["apu2","apu4"]`, and `APU_VARIANTS` for the
 variants, for example `["uefi"]`. Manual runs build the variant they are given.
 
+Release candidates published by 3mdeb (`-rcN` tags) are built too, as GitHub pre-releases, when
+they are newer than the latest release: `seabios-v26.09.00.01-rc4`, `uefi-v0.9.1-rc3`. The latest
+release is always built as well, so an rc of the next version does not hide it. Set the repository
+variable `APU_RC` to `0` to build releases only (manual runs: `rc` input).
+
 The ROMs are GPL binaries. Each release includes a `.sources` file listing the exact public commits
 used: coreboot, Dasharo patch queue, submodules and toolchain image.
 
@@ -149,4 +154,8 @@ The interface strings are in English, like the rest of OPNsense, and go through 
   reinstalled in the other boot mode). Choose the variant that matches the installed firmware.
 - The plugin has been tested with a fake `flashrom` and a fake GitHub (`plugin/tests/`), not on
   real hardware before its first use.
-- `-unreleased` builds (*Pre-releases* option) come from branches that 3mdeb has not validated.
+- Release candidates (*Release candidates* option) are for testing. The final release is offered
+  over an installed rc as soon as it is out, even with the option off. SeaBIOS release candidates
+  report the final version (`v26.09.00.01` for `-rc4`): the plugin remembers the rc it flashed to
+  tell them apart, so an rc flashed by hand is seen as the final release. `-unreleased` builds come
+  from branches that 3mdeb has not validated.

@@ -26,9 +26,8 @@
     </field>
     <field>
         <id>apufirmware.general.prerelease</id>
-        <label>Pre-releases</label>
+        <label>Release candidates</label>
         <type>checkbox</type>
-        <help>Also offer builds of unreleased Dasharo branches. Not validated by 3mdeb.</help>
-        <advanced>true</advanced>
+        <help>Also offer Dasharo release candidates (-rc) and builds of unreleased branches, for testing. They are not final releases. The final release is offered once it is out, and a release candidate is never offered over it.</help>
     </field>
 </form>

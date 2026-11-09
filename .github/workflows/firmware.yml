@@ -18,6 +18,10 @@ on:
         description: Exact version (empty = latest)
         required: false
         default: ''
+      rc:
+        description: Also build the latest release candidate (-rc, prerelease) when newer than the latest release
+        type: boolean
+        default: true
       unreleased:
         description: Include unreleased rel_* branches (prerelease)
         type: boolean
@@ -65,6 +69,8 @@ jobs:
           VARIANTS: ${{ inputs.variant && format('["{0}"]', inputs.variant) || vars.APU_VARIANTS || '["seabios","uefi"]' }}
           BOARDS: ${{ vars.APU_BOARDS || '["apu4"]' }}
           UNRELEASED: ${{ inputs.unreleased && '1' || '0' }}
+          # release candidates: manual input, or repository variable APU_RC (default 1) for scheduled runs
+          RC: ${{ github.event_name == 'workflow_dispatch' && (inputs.rc && '1' || '0') || vars.APU_RC || '1' }}
           VERSION: ${{ inputs.version }}
           FORCE: ${{ inputs.force && 'true' || 'false' }}
           # scheduled runs have no inputs: they always publish
@@ -72,11 +78,19 @@ jobs:
         run: |
           releases='[]'
           for variant in $(jq -r '.[]' <<<"$VARIANTS"); do
-            ver=${VERSION:-$(VARIANT=$variant scripts/apu-fw latest)}
-            [ -n "$ver" ] || { echo "::error::no $variant version found"; exit 1; }
-            base=${ver%-unreleased}
-            tag="$variant-v$base"; pre=false
-            if [ "$ver" != "$base" ]; then tag="$tag-unreleased"; pre=true; fi
+            # the latest release, and the latest release candidate when it is newer: an rc of
+            # the next version must not hide the release of the current one
+            if [ -n "$VERSION" ]; then vers=$VERSION
+            else
+              vers=$(VARIANT=$variant RC=0 scripts/apu-fw latest)
+              if [ "$RC" = 1 ]; then
+                vers=$(printf '%s\n%s\n' "$vers" "$(VARIANT=$variant RC=1 scripts/apu-fw latest)" | sort -u)
+              fi
+            fi
+            [ -n "$vers" ] || { echo "::error::no $variant version found"; exit 1; }
+            for ver in $vers; do
+            tag="$variant-v$ver"; pre=false
+            case $ver in *-*) pre=true ;; esac       # -rcN or -unreleased
 
             if [ "$PUBLISH" = false ]; then
               echo "::notice::test build of $tag, nothing will be published"
@@ -88,6 +102,7 @@ jobs:
             fi
             releases=$(jq -c --arg variant "$variant" --arg version "$ver" --arg tag "$tag" --argjson pre "$pre" \
               '. + [{variant: $variant, version: $version, tag: $tag, prerelease: $pre}]' <<<"$releases")
+            done
           done
           {
             echo "releases=$releases"
@@ -134,7 +149,8 @@ jobs:
 
       - uses: actions/upload-artifact@v7
         with:
-          name: rom-${{ matrix.variant }}-${{ matrix.board }}
+          # the version ends the name: rom-seabios-*-v26.09.00.01 must not match -v26.09.00.01-rc4
+          name: rom-${{ matrix.variant }}-${{ matrix.board }}-v${{ matrix.version }}
           path: ${{ runner.temp }}/out/*
           if-no-files-found: error
 
@@ -149,7 +165,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@v8
         with:
-          pattern: rom-${{ matrix.variant }}-*
+          pattern: rom-${{ matrix.variant }}-*-v${{ matrix.version }}
           path: out
           merge-multiple: true
 
@@ -178,10 +194,14 @@ jobs:
             echo
             echo "### Sources"
             for f in *.sources; do echo; echo '```'; cat "$f"; echo '```'; done
-            if [ "$PRERELEASE" = true ]; then
-              echo
-              echo "> Release branch not yet published by 3mdeb: not validated, for testing only."
-            fi
+            case $VERSION in
+              *-rc*)
+                echo
+                echo "> Release candidate published by 3mdeb: not a final release, for testing only." ;;
+              *-unreleased)
+                echo
+                echo "> Release branch not yet published by 3mdeb: not validated, for testing only." ;;
+            esac
           } > notes.md
 
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
