@@ -123,6 +123,11 @@ build_seabios() {
   cd "$src"
   git checkout -q -b patchqueue
   local pq=.pq
+  # The patch commits and the tag get a fixed committer and date (the patchqueue commit
+  # date): the SBOM in the ROM (coreboot >= 25.x) records the HEAD commit hash, which
+  # otherwise changes with the build time. Authors and author dates come from the patches.
+  GIT_COMMITTER_DATE=$(git -C .pq log -1 --format=%cI)
+  export GIT_COMMITTER_NAME=apu-fw GIT_COMMITTER_EMAIL=apu-fw@localhost GIT_COMMITTER_DATE
   if [[ $PATCH_TOOL == guilt ]]; then
     # the dasharo-pq README procedure, step by step
     need guilt
