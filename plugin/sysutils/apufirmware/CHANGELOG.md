@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.2.0](https://github.com/Aarklendoia/apu-firmware/compare/plugin-v1.1.0...plugin-v1.2.0) (2026-11-10)
+
+
+### Features
+
+* **plugin:** lift the WP_RO write protection when possible ([#34](https://github.com/Aarklendoia/apu-firmware/issues/34)) ([ddf3420](https://github.com/Aarklendoia/apu-firmware/commit/ddf3420dc826b502b30d4e277026305822ad9b24))
+* **plugin:** lift the WP_RO write protection when possible ([#35](https://github.com/Aarklendoia/apu-firmware/issues/35)) ([ddf3420](https://github.com/Aarklendoia/apu-firmware/commit/ddf3420dc826b502b30d4e277026305822ad9b24))
+
+
+### Bug Fixes
+
+* **plugin:** cold reset with FullRst instead of the D18F0x6C flag ([#32](https://github.com/Aarklendoia/apu-firmware/issues/32)) ([c5ab4de](https://github.com/Aarklendoia/apu-firmware/commit/c5ab4de66eb79cb1a05f83116b76c32dfd608420))
+* **plugin:** cold reset with FullRst instead of the D18F0x6C flag ([#37](https://github.com/Aarklendoia/apu-firmware/issues/37)) ([c5ab4de](https://github.com/Aarklendoia/apu-firmware/commit/c5ab4de66eb79cb1a05f83116b76c32dfd608420))
+
 ## [1.1.0](https://github.com/Aarklendoia/apu-firmware/compare/plugin-v1.0.2...plugin-v1.1.0) (2026-11-09)
 
 
