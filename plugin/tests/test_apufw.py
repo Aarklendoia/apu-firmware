@@ -124,22 +124,44 @@ AMBIGUOUS = ('echo \'Multiple flash chip definitions match the detected chip(s):
              '"W25Q64BV/W25Q64CV/W25Q64FV", "W25Q64JV-.Q"\'; exit 1')
 
 
-def hw(product, bios, flash_ok=True, write_fail=False, reg='580ffe00', ambiguous=False, wp=(0, 0), flash=b'x'):
-    """Fake board: wp is the protected (start, length), flash the content read by flashrom -r."""
+def hw(product, bios, flash_ok=True, write_fail=False, reg='580ffe00', ambiguous=False, wp=(0, 0), flash=b'x',
+       wp_locked=False):
+    """Fake board: wp is the protected (start, length), flash the content read by flashrom -r.
+
+    The protection is kept in a state file; wp_locked is the /WP pin (jumper fitted): it cannot be
+    changed. A write touching WP_RO fails before writing while the protection is on.
+    write_fail: True fails while writing, 'before' fails before anything is written.
+    """
     fake('kenv', 'case "$2" in smbios.system.product) echo "%s";; smbios.bios.version) echo "%s";; esac\n'
          % (product, bios))
     with open(os.path.join(ROOT, 'flash.rom'), 'wb') as f:
         f.write(flash)
+    with open(os.path.join(ROOT, 'wp'), 'w') as f:
+        f.write('%d %d %s\n' % (wp[0], wp[1], 'hardware' if wp[1] else 'disabled'))
+    locked = 'echo "Failed to apply new WP settings"; exit 1' if wp_locked else ':'
+    if write_fail == 'before':
+        write = 'echo "Error: unexpected chip state"; exit 1'
+    elif write_fail:
+        write = 'echo "Erasing and writing flash chip... "; echo FAILED; exit 1'
+    else:
+        write = 'echo "Erasing and writing flash chip... Erase/write done."; echo "Verifying flash... VERIFIED."'
     # like flashrom on an apu4 W25Q64: without -c, it stops after probing
-    fake('flashrom', 'echo "flashrom $*" >> %s/flashrom.calls\n'
-         'case "$*" in *" -c "*) ;; *) %s;; esac\n'
+    fake('flashrom', 'echo "flashrom $*" >> {R}/flashrom.calls\n'
+         'read s l m < {R}/wp\n'
+         'case "$*" in *" -c "*) ;; *) {amb};; esac\n'
          'case "$*" in "-p internal") ;;\n'
-         '  *--wp-status*) echo "Protection range: start=0x%08x length=0x%08x";;\n'
-         '  *" -r "*) %s;;\n'
-         '  *" -w "*) echo "Erasing and writing flash chip... "; %s;; esac\n'
-         % (ROOT, AMBIGUOUS if ambiguous else ':', wp[0], wp[1],
-            'cp %s/flash.rom "$4"' % ROOT if flash_ok else 'echo "write protected"; exit 1',
-            'echo FAILED; exit 1' if write_fail else 'echo "Erase/write done."; echo "Verifying flash... VERIFIED."'))
+         '  *--wp-status*) printf "Protection range: start=0x%08x length=0x%08x\\nProtection mode: %s\\n" '
+         '"$s" "$l" "$m";;\n'
+         '  *--wp-disable*) {locked}; echo "$s $l disabled" > {R}/wp;;\n'
+         '  *--wp-enable*) {locked}; echo "$s $l hardware" > {R}/wp;;\n'
+         '  *--wp-range=*) {locked}; r=${{*#*--wp-range=}}; r=${{r%% *}}; '
+         'echo "$((${{r%,*}})) $((${{r#*,}})) $m" > {R}/wp;;\n'
+         '  *" -r "*) {read};;\n'
+         '  *" -w "*WP_RO*) [ "$l" != 0 ] && [ "$m" != disabled ] && {{ echo "write protected"; exit 1; }}; '
+         '{write};;\n'
+         '  *" -w "*) {write};; esac\n'.format(
+             R=ROOT, amb=AMBIGUOUS if ambiguous else ':', locked=locked, write=write,
+             read='cp %s/flash.rom "$4"' % ROOT if flash_ok else 'echo "write protected"; exit 1'))
     fake('pciconf', 'echo "pciconf $*" >> %s/pciconf.calls\n[ "$1" = "-r" ] && echo %s\nexit 0\n' % (ROOT, reg))
 
 
@@ -153,7 +175,7 @@ def config(repo='me/apu-firmware', token='', variant='seabios', pre='0'):
 
 def reset_state():
     shutil.rmtree(os.path.join(ROOT, 'state'), ignore_errors=True)
-    for f in ('flashrom.calls', 'pciconf.calls'):
+    for f in ('flashrom.calls', 'pciconf.calls', 'wp'):
         if os.path.exists(os.path.join(ROOT, f)):
             os.unlink(os.path.join(ROOT, f))
 
@@ -289,11 +311,32 @@ check('uefi installed + seabios variant: blocked', 'manually' in (st.get('blocke
 code, _ = run('flash')
 check('uefi installed: flash refused', code == 1 and calls('flashrom.calls') == '', calls('flashrom.calls'))
 
-# 9b. UEFI, upper half write protected (apu4 with Dasharo UEFI): only RW_SECTION_A
+# 9a. UEFI, upper half write protected, protection can be lifted (apu4, no jumper): WP_RO too
 UPPER = (0x4000, 0x4000)
 reset_state()
 config(variant='uefi')
 hw('apu4', 'Dasharo (coreboot+UEFI) v0.9.0', wp=UPPER, flash=fmap_rom(b'$GBB key 1', b'\x00'))
+code, _ = run('flash')
+fr = calls('flashrom.calls')
+check('uefi + WP lifted: flash succeeds', code == 0, open(env['APUFW_LOG']).read())
+check('uefi + WP lifted: protection disabled first', '--wp-disable' in fr and '--wp-range=0,0' in fr, fr)
+check('uefi + WP lifted: WP_RO and RW_SECTION_A', '-w ' in fr and '--fmap -i WP_RO -i RW_SECTION_A' in fr, fr)
+check('uefi + WP lifted: not restored after success (firmware does it)', '--wp-enable' not in fr, fr)
+
+# 9a2. same, but flashrom fails before writing: protection put back as found
+reset_state()
+hw('apu4', 'Dasharo (coreboot+UEFI) v0.9.0', wp=UPPER, flash=fmap_rom(b'$GBB key 1', b'\x00'),
+   write_fail='before')
+code, _ = run('flash')
+_, st = run('status')
+check('uefi + WP lifted, write refused: error', code == 1 and 'unchanged' in st['message'], st)
+check('uefi + WP lifted, write refused: protection restored',
+      open(os.path.join(ROOT, 'wp')).read().split() == ['16384', '16384', 'hardware'],
+      calls('flashrom.calls'))
+
+# 9b. UEFI, upper half write protected by the jumper: only RW_SECTION_A
+reset_state()
+hw('apu4', 'Dasharo (coreboot+UEFI) v0.9.0', wp=UPPER, flash=fmap_rom(b'$GBB key 1', b'\x00'), wp_locked=True)
 code, _ = run('flash')
 writes = [line for line in calls('flashrom.calls').splitlines() if ' -w ' in line]
 check('uefi + WP: flash succeeds', code == 0, open(env['APUFW_LOG']).read())
@@ -302,7 +345,7 @@ check('uefi + WP: only RW_SECTION_A written',
 
 # 9c. same, but the read-only part has other keys: refused before writing
 reset_state()
-hw('apu4', 'Dasharo (coreboot+UEFI) v0.9.0', wp=UPPER, flash=fmap_rom(b'$GBB key 2', b'\x00'))
+hw('apu4', 'Dasharo (coreboot+UEFI) v0.9.0', wp=UPPER, flash=fmap_rom(b'$GBB key 2', b'\x00'), wp_locked=True)
 code, _ = run('flash')
 _, st = run('status')
 check('uefi + WP, other keys: refused', code == 1 and 'other keys' in st['message'], st)

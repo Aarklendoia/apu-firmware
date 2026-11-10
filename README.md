@@ -118,8 +118,8 @@ What the plugin does, in order (any failure before step 4 leaves the flash untou
 4. write protection check (`flashrom --wp-status`), see below;
 5. `flashrom` write, then verification:
    - Dasharo SeaBIOS: only the `COREBOOT` region (boot order and settings are kept);
-   - Dasharo UEFI: `WP_RO` and `RW_SECTION_A`, or `RW_SECTION_A` alone when `WP_RO` is write
-     protected;
+   - Dasharo UEFI: `WP_RO` and `RW_SECTION_A` (the write protection of `WP_RO` is lifted when
+     possible), or `RW_SECTION_A` alone when it cannot be lifted;
    - original PC Engines firmware (v4.x): the full image, as recommended by 3mdeb, and settings
      return to their defaults.
 
@@ -128,12 +128,18 @@ two), the plugin passes the first one with `-c`: both describe the same chip.
 
 ## Write protection
 
-Dasharo UEFI can keep its read-only part (`WP_RO`, the upper half of the flash) write protected.
-The read-only part then checks `RW_SECTION_A` with the keys stored in its GBB, so the plugin writes
-`RW_SECTION_A` alone, after checking that the new ROM has the same flash layout and the same GBB
-as the current flash. If the keys differ, or if the protection covers anything else (full image,
-SeaBIOS `COREBOOT` region), the plugin stops before writing: disable the protection first
-(sortbootorder **F10** menu on SeaBIOS, write-protect jumper).
+Dasharo UEFI write protects its read-only part (`WP_RO`, the upper half of the flash) again at
+every boot. When the write-protect jumper is not fitted, the operating system may lift that
+protection: the plugin then disables it (`--wp-disable`, `--wp-range=0,0`) and writes `WP_RO` and
+`RW_SECTION_A`. Nothing has to be restored afterwards, the firmware protects `WP_RO` again at the
+next boot. If flashrom fails before writing, the plugin puts the protection back as it found it.
+
+When the protection cannot be lifted (jumper fitted), the read-only part stays and checks
+`RW_SECTION_A` with the keys stored in its GBB, so the plugin writes `RW_SECTION_A` alone, after
+checking that the new ROM has the same flash layout and the same GBB as the current flash. If the
+keys differ, or if the protection covers anything else (full image, SeaBIOS `COREBOOT` region), the
+plugin stops before writing: disable the protection first (sortbootorder **F10** menu on SeaBIOS,
+write-protect jumper).
 
 To see the protection from a shell: `flashrom -p internal --wp-status` (add
 `-c "W25Q64BV/W25Q64CV/W25Q64FV"` if flashrom asks for a chip definition).

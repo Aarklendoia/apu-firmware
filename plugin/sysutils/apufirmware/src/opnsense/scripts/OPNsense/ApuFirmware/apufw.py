@@ -233,10 +233,42 @@ def flashrom_chip():
 
 
 def write_protection(chip):
-    """(start, length) of the flash range protected against writes, (0, 0) if none."""
+    """(start, length, mode) of the flash write protection, length 0 if none."""
     _, out = run(['flashrom', '-p', 'internal', '--wp-status'] + chip, logged=True)
     match = re.search(r'Protection range: start=0x([0-9a-fA-F]+) length=0x([0-9a-fA-F]+)', out)
-    return (int(match.group(1), 16), int(match.group(2), 16)) if match else (0, 0)
+    mode = re.search(r'Protection mode: (\S+)', out)
+    start, length = (int(match.group(1), 16), int(match.group(2), 16)) if match else (0, 0)
+    return start, length, mode.group(1) if mode else 'disabled'
+
+
+def lift_protection(chip, wp):
+    """Disable the write protection when the OS may (/WP pin not asserted): True on success.
+
+    Dasharo UEFI protects WP_RO again at every boot, so nothing has to be restored after a
+    successful write. On failure, the protection is put back as it was found.
+    """
+    log('The flash is write protected (0x%x-0x%x, mode %s): lifting the protection to update '
+        'WP_RO too' % (wp[0], wp[0] + wp[1] - 1, wp[2]))
+    for arg in ('--wp-disable', '--wp-range=0,0'):
+        code, _ = run(['flashrom', '-p', 'internal', arg] + chip, logged=True)
+        if code != 0:
+            break
+    now = write_protection(chip)
+    if not now[1] or now[2] == 'disabled':
+        log('Write protection lifted, the firmware sets it again at the next boot')
+        return True
+    log('The write protection cannot be lifted (write-protect jumper fitted?)')
+    if now != wp:
+        restore_protection(chip, wp)
+    return False
+
+
+def restore_protection(chip, wp):
+    """Put back the write protection (start, length, mode) found before the update."""
+    run(['flashrom', '-p', 'internal', '--wp-range=0x%x,0x%x' % (wp[0], wp[1])] + chip, logged=True)
+    if wp[2] != 'disabled':
+        run(['flashrom', '-p', 'internal', '--wp-enable'] + chip, logged=True)
+    log('Write protection restored (0x%x-0x%x)' % (wp[0], wp[0] + wp[1] - 1))
 
 
 def fmap(data):
@@ -532,7 +564,11 @@ def _flash():
         os.unlink(old)
     status['last_backup'] = backup
 
-    plan, error = fit_protection(plan, write_protection(chip), rom, backup)
+    wp = write_protection(chip)
+    lifted = None
+    if wp[1] and wp[2] != 'disabled' and status['current_family'] == 'uefi' and lift_protection(chip, wp):
+        lifted = wp
+    plan, error = fit_protection(plan, (0, 0) if lifted else wp[:2], rom, backup)
     if error:
         return _fail(status, error)
 
@@ -543,6 +579,8 @@ def _flash():
         if 'Erasing and writing flash chip' in out:
             return _fail(status, M('flashrom failed while writing. DO NOT REBOOT: retry the update, '
                                    'or restore %s with flashrom.', backup))
+        if lifted:
+            restore_protection(chip, lifted)
         return _fail(status, M('flashrom failed before writing, the firmware is unchanged.'))
 
     status['state'] = 'flashed'
