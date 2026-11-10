@@ -187,7 +187,8 @@ def calls(name):
 
 env = dict(os.environ, PATH=BIN + ':' + os.environ['PATH'],
            APUFW_STATE_DIR=os.path.join(ROOT, 'state'), APUFW_CONFIG=os.path.join(ROOT, 'config.xml'),
-           APUFW_LOG=os.path.join(ROOT, 'apufw.log'),
+           APUFW_LOG=os.path.join(ROOT, 'apufw.log'), APUFW_MEM=os.path.join(ROOT, 'mem'),
+           APUFW_FULLRST_WAIT='0',
            APUFW_API='http://127.0.0.1:%d' % srv.server_port)
 
 
@@ -447,18 +448,35 @@ check('token: sent to API and asset endpoints', api and all(a == 'Bearer github_
 check('token: not leaked to signed URLs', signed and all(a is None for a in signed), SEEN)
 config()
 
-# 12. cold reset safety
+# 12. cold reset: FullRst (0x0E) written at 0xFED803C5 of /dev/mem, after a register check
+FULLRST = 0xFED803C5
+
+
+def mem_byte():
+    with open(env['APUFW_MEM'], 'rb') as f:
+        f.seek(FULLRST)
+        return f.read(1)
+
+
+def fresh_mem():
+    open(env['APUFW_MEM'], 'wb').close()     # sparse: only the written byte takes space
+
+
 reset_state()
+fresh_mem()
 hw('apu4', 'v24.08.00.01', reg='12345678')
 code, _ = run('coldreset')
-check('coldreset: refused on unexpected register', code == 1 and '-w' not in calls('pciconf.calls'),
-      calls('pciconf.calls'))
+check('coldreset: refused on unexpected register', code == 1 and mem_byte() == b'', mem_byte())
 reset_state()
+fresh_mem()
 hw('apu4', 'v24.08.00.01')
-fake('rc.syshook', 'exit 0\n')
-code, _ = run('coldreset')
-check('coldreset: writes 0x580ffe10', 'pciconf -w pci0:24:0 0x6c 0x580ffe10' in calls('pciconf.calls'),
-      calls('pciconf.calls'))
+code, out = run('coldreset')
+check('coldreset: FullRst written', mem_byte() == b'\x0e', mem_byte())
+check('coldreset: D18F0x6C not written', '-w' not in calls('pciconf.calls'), calls('pciconf.calls'))
+check('coldreset: still running afterwards -> unplug', code == 1 and 'unplug' in out, out)
+os.unlink(env['APUFW_MEM'])
+code, out = run('coldreset')
+check('coldreset: /dev/mem not writable -> unplug', code == 1 and 'unplug' in out, out)
 
 # 13. interrupted run is detected
 reset_state()

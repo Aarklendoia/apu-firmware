@@ -57,12 +57,19 @@ LOCK_FILE = os.path.join(STATE_DIR, 'lock')
 BACKUP_DIR = os.path.join(STATE_DIR, 'backup')
 KEEP_BACKUPS = 3
 
-# D18F0x6C, bit 4: full power cycle of the board (PC Engines apu2 documentation,
-# coreboot >= v4.9.0.4). The register must read back 580ffe00 before writing.
+# Cold reset: FullRst (0x0E) written to the FCH reset register (I/O port 0xCF9, also mapped at
+# 0xFED803C5): the board is powered off for 3-5 seconds, then boots cold. Method of the PC Engines
+# apu2 documentation (cold_reset.md, pfSense), tested on an apu4 with OPNsense 26.7. It does not
+# depend on the firmware, unlike the D18F0x6C flag + reboot, which stopped Dasharo UEFI v0.9.1
+# right after an update (#33).
+# D18F0x6C must read 580ffe00, as on every apu2/3/4/6: a safety check before writing.
 COLDRESET_DEV = 'pci0:24:0'
 COLDRESET_REG = '0x6c'
 COLDRESET_EXPECT = '580ffe00'
-COLDRESET_VALUE = '0x580ffe10'
+FULLRST_MEM = os.environ.get('APUFW_MEM', '/dev/mem')
+FULLRST_ADDR = 0xFED803C5
+FULLRST_VALUE = b'\x0e'
+FULLRST_WAIT = int(os.environ.get('APUFW_FULLRST_WAIT', '15'))
 
 
 # ------------------------------------------------------------------ helpers
@@ -608,8 +615,18 @@ def cmd_coldreset():
     run(['sync'])
     log('Cold reset: power cycling the board')
     os.sync()
-    run(['pciconf', '-w', COLDRESET_DEV, COLDRESET_REG, COLDRESET_VALUE])
-    return 0
+    try:
+        with open(FULLRST_MEM, 'r+b', buffering=0) as mem:
+            mem.seek(FULLRST_ADDR)
+            mem.write(FULLRST_VALUE)
+    except OSError as e:
+        log('Cold reset failed: %s. Unplug the power for a few seconds.' % e)
+        print('Cold reset failed, unplug the power instead.')
+        return 1
+    time.sleep(FULLRST_WAIT)
+    log('Cold reset had no effect. Unplug the power for a few seconds.')
+    print('Cold reset had no effect, unplug the power instead.')
+    return 1
 
 
 def main():
