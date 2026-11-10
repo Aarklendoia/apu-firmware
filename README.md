@@ -108,8 +108,19 @@ click in the web interface.
 
 1. A notification appears in the bell when a new version is published.
 2. *APU coreboot* page → **Update firmware**. The log scrolls during the operation (~1 minute).
-3. **Cold reset**: services are stopped cleanly, then the board is powered off for a few seconds
-   and boots the new firmware. A regular `reboot` is not enough on an APU.
+3. **Cold reset**: services are stopped cleanly, then the board is powered off for 3-5 seconds and
+   boots the new firmware cold. The SSH sessions freeze and the network is down for 1-2 minutes.
+   Do not use a regular `reboot` right after an update: it is not enough on an APU, and Dasharo
+   UEFI v0.9.1 stopped at boot when it followed a v0.9.0 to v0.9.1 update
+   ([#33](https://github.com/Aarklendoia/apu-firmware/issues/33)). Later reboots work normally.
+
+The cold reset writes FullRst (`0x0E`) to the reset register of the chipset (I/O port `0xCF9`,
+mapped at `0xFED803C5`) through `/dev/mem`, the
+[method documented by PC Engines](https://pcengines.github.io/apu2-documentation/cold_reset). It
+does not depend on the firmware. To do the same from a shell:
+`sync; printf '\016' | dd of=/dev/mem bs=1 count=1 seek=4275569605`.
+If the board is still running 15 seconds later, the log says so: unplug the power for a few
+seconds.
 
 What the plugin does, in order (any failure before step 4 leaves the flash untouched):
 1. download from the release, sha256 verification;
@@ -156,7 +167,12 @@ updates can be done remotely.
 - **Failure while writing**: the message says **DO NOT REBOOT**. Retry the update, or restore the
   backup over SSH (with `-c <chip>` if flashrom asks for one):
   `flashrom -p internal -w /var/db/apufirmware/backup/<file>.rom`
-  (with `WP_RO` write protected, restore only what was written: add `--fmap -i RW_SECTION_A`)
+  (Dasharo UEFI: add `--fmap -i WP_RO -i RW_SECTION_A`. If the plugin lifted the write
+  protection, it is still lifted; otherwise check `--wp-status` and, if `WP_RO` is protected,
+  restore only `--fmap -i RW_SECTION_A`)
+- **The board hangs after a `reboot` right after an update** (on the serial console:
+  `ASSERTION ERROR: file 'src/commonlib/include/commonlib/region.h'`): unplug the power for
+  30 seconds. The flash is fine, the board boots the new firmware cold.
 - **The board no longer boots**: only an external SPI programmer (e.g. CH341A with a SOIC8 clip,
   or the PC Engines spi1a) can write the backup back.
 
@@ -183,8 +199,9 @@ translate every `msgstr`.
 
 - Switching between SeaBIOS and UEFI is not supported from the interface (OPNsense must be
   reinstalled in the other boot mode). Choose the variant that matches the installed firmware.
-- The plugin has been tested with a fake `flashrom` and a fake GitHub (`plugin/tests/`), not on
-  real hardware before its first use.
+- The plugin is tested with a fake `flashrom` and a fake GitHub (`plugin/tests/`). On real
+  hardware, it has updated an apu4 from Dasharo UEFI v0.9.0 to v0.9.1 (write protection lifted by
+  hand at the time); the cold reset method was then tested on its own on the same board.
 - Release candidates (*Release candidates* option) are for testing. The final release is offered
   over an installed rc as soon as it is out, even with the option off. SeaBIOS release candidates
   report the final version (`v26.09.00.01` for `-rc4`): the plugin remembers the rc it flashed to
