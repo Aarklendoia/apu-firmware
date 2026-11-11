@@ -1,0 +1,198 @@
+# Machine translation, not reviewed by a native speaker: corrections are welcome.
+msgid ""
+msgstr ""
+"Project-Id-Version: os-apufirmware\n"
+"PO-Revision-Date: 2026-11-11 12:00+0100\n"
+"Last-Translator: machine translation\n"
+"Language-Team: Spanish\n"
+"Language: es_ES\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+# Settings form
+msgid "Daily check"
+msgstr "Comprobación diaria"
+
+msgid "Check for new firmware every night. New versions are announced in the system status."
+msgstr "Buscar firmware nuevo cada noche. Las nuevas versiones se anuncian en el estado del sistema."
+
+msgid "GitHub repository"
+msgstr "Repositorio de GitHub"
+
+msgid "owner/apu-firmware"
+msgstr "propietario/apu-firmware"
+
+msgid "Repository whose releases contain the firmware builds (owner/name)."
+msgstr "Repositorio cuyas releases contienen las compilaciones del firmware (propietario/nombre)."
+
+msgid "Access token"
+msgstr "Token de acceso"
+
+msgid "Only for a private repository: fine-grained token with read-only access to its contents."
+msgstr "Solo para un repositorio privado: token de permisos detallados con acceso de solo lectura a su contenido."
+
+msgid "Firmware variant"
+msgstr "Variante del firmware"
+
+msgid "Must match the firmware currently installed. Changing variant is not supported from here."
+msgstr "Debe coincidir con el firmware instalado actualmente. El cambio de variante no se admite desde aquí."
+
+msgid "Release candidates"
+msgstr "Versiones candidatas"
+
+msgid "Also offer Dasharo release candidates (-rc) and builds of unreleased branches, for testing. They are not final releases. The final release is offered once it is out, and a release candidate is never offered over it."
+msgstr "Ofrecer también las versiones candidatas de Dasharo (-rc) y las compilaciones de ramas no publicadas, para pruebas. No son versiones finales. La versión final se ofrece en cuanto se publica, y nunca se ofrece una versión candidata en su lugar."
+
+# System status (notification bell)
+msgid "APU coreboot firmware"
+msgstr "Firmware coreboot del APU"
+
+msgid "New firmware has been written. A cold reset is required to start it."
+msgstr "Se ha escrito el nuevo firmware. Se necesita un reinicio en frío para arrancarlo."
+
+msgid "Firmware update failed: %s"
+msgstr "Error al actualizar el firmware: %s"
+
+msgid "Firmware %s is available (installed: %s)."
+msgstr "El firmware %s está disponible (instalado: %s)."
+
+# Firmware page
+msgid "Firmware"
+msgstr "Firmware"
+
+msgid "Board"
+msgstr "Placa"
+
+msgid "Installed"
+msgstr "Instalado"
+
+msgid "Latest build"
+msgstr "Última compilación"
+
+msgid "Last check"
+msgstr "Última comprobación"
+
+msgid "Status"
+msgstr "Estado"
+
+msgid "Check now"
+msgstr "Comprobar ahora"
+
+msgid "Update firmware"
+msgstr "Actualizar el firmware"
+
+msgid "Cold reset"
+msgstr "Reinicio en frío"
+
+msgid "Not a PC Engines APU"
+msgstr "No es un APU de PC Engines"
+
+msgid "new"
+msgstr "nuevo"
+
+msgid "Not checked yet."
+msgstr "Aún no comprobado."
+
+msgid "An update is available."
+msgstr "Hay una actualización disponible."
+
+msgid "Up to date."
+msgstr "Actualizado."
+
+msgid "The current firmware will be backed up, then the new one written and verified. Do not cut the power during the update. A cold reset is needed afterwards to start the new firmware. Continue?"
+msgstr "El firmware actual se guardará y luego se escribirá y verificará el nuevo. No corte la alimentación durante la actualización. Después será necesario un reinicio en frío para arrancar el nuevo firmware. ¿Continuar?"
+
+msgid "Update"
+msgstr "Actualizar"
+
+msgid "Cancel"
+msgstr "Cancelar"
+
+msgid "Services will be stopped and the board powered off for a few seconds, then it will boot the new firmware. The network will be down for a few minutes. Continue?"
+msgstr "Los servicios se detendrán y la placa se apagará durante unos segundos; después arrancará con el nuevo firmware. La red no estará disponible durante unos minutos. ¿Continuar?"
+
+msgid "Restarting. Reload this page in a few minutes."
+msgstr "Reiniciando. Vuelva a cargar esta página dentro de unos minutos."
+
+# Backend messages (apufw.py)
+msgid "The flash is write protected (%s) and the whole image must be written: disable the protection. Nothing was written."
+msgstr "La flash está protegida contra escritura (%s) y hay que escribir la imagen completa: desactive la protección. No se ha escrito nada."
+
+msgid "The flash is write protected (%s) and covers %s: disable the protection. Nothing was written."
+msgstr "La flash está protegida contra escritura (%s) y la protección cubre %s: desactive la protección. No se ha escrito nada."
+
+msgid "The flash is write protected (%s): only RW_SECTION_A could be written, but the flash layout differs. Nothing was written."
+msgstr "La flash está protegida contra escritura (%s): solo se podría escribir RW_SECTION_A, pero la organización de la flash es distinta. No se ha escrito nada."
+
+msgid "The flash is write protected (%s): only RW_SECTION_A could be written, but it is signed with other keys than the read-only part (GBB), which would reject it. Nothing was written."
+msgstr "La flash está protegida contra escritura (%s): solo se podría escribir RW_SECTION_A, pero está firmada con claves distintas de las de la parte de solo lectura (GBB), que la rechazaría. No se ha escrito nada."
+
+msgid "This is not a PC Engines apu2/3/4/6 board."
+msgstr "Esta no es una placa PC Engines apu2/3/4/6."
+
+msgid "flashrom is not installed."
+msgstr "flashrom no está instalado."
+
+msgid "The current firmware version could not be read."
+msgstr "No se ha podido leer la versión del firmware actual."
+
+msgid "Switching from UEFI to SeaBIOS must be done manually."
+msgstr "El paso de UEFI a SeaBIOS debe hacerse manualmente."
+
+msgid "Switching from SeaBIOS to UEFI must be done manually (OPNsense must boot in UEFI mode)."
+msgstr "El paso de SeaBIOS a UEFI debe hacerse manualmente (OPNsense debe arrancar en modo UEFI)."
+
+msgid "Firmware %s is running."
+msgstr "El firmware %s está en ejecución."
+
+msgid "The last operation was interrupted, see the log."
+msgstr "La última operación se interrumpió, consulte el registro."
+
+msgid "No GitHub repository configured."
+msgstr "No hay ningún repositorio de GitHub configurado."
+
+msgid "Unsupported board."
+msgstr "Placa no compatible."
+
+msgid "GitHub query failed: %s"
+msgstr "Error en la consulta a GitHub: %s"
+
+msgid "No release for %s (%s) in %s."
+msgstr "No hay ninguna release para %s (%s) en %s."
+
+msgid "Unexpected error: %s"
+msgstr "Error inesperado: %s"
+
+msgid "Preparing"
+msgstr "Preparando"
+
+msgid "No newer firmware is available."
+msgstr "No hay ningún firmware más reciente disponible."
+
+msgid "Downloading %s"
+msgstr "Descargando %s"
+
+msgid "Download failed: %s"
+msgstr "Error en la descarga: %s"
+
+msgid "Checksum mismatch for %s (expected %s, got %s)."
+msgstr "Suma de comprobación incorrecta para %s (se esperaba %s, se obtuvo %s)."
+
+msgid "Backing up the current firmware"
+msgstr "Guardando el firmware actual"
+
+msgid "Backup failed, nothing was written. Is the firmware write protection disabled?"
+msgstr "Error en la copia de seguridad, no se ha escrito nada. ¿Está desactivada la protección contra escritura del firmware?"
+
+msgid "Writing %s"
+msgstr "Escribiendo %s"
+
+msgid "flashrom failed while writing. DO NOT REBOOT: retry the update, or restore %s with flashrom."
+msgstr "flashrom ha fallado durante la escritura. NO REINICIE: vuelva a intentar la actualización o restaure %s con flashrom."
+
+msgid "flashrom failed before writing, the firmware is unchanged."
+msgstr "flashrom ha fallado antes de escribir, el firmware no ha cambiado."
+
+msgid "Firmware %s written and verified. A cold reset is required."
+msgstr "Firmware %s escrito y verificado. Se necesita un reinicio en frío."

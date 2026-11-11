@@ -1,0 +1,198 @@
+# Machine translation, not reviewed by a native speaker: corrections are welcome.
+msgid ""
+msgstr ""
+"Project-Id-Version: os-apufirmware\n"
+"PO-Revision-Date: 2026-11-11 12:00+0100\n"
+"Last-Translator: machine translation\n"
+"Language-Team: Japanese\n"
+"Language: ja_JP\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+# Settings form
+msgid "Daily check"
+msgstr "毎日の確認"
+
+msgid "Check for new firmware every night. New versions are announced in the system status."
+msgstr "毎晩、新しいファームウェアを確認します。新しいバージョンはシステムステータスで通知されます。"
+
+msgid "GitHub repository"
+msgstr "GitHub リポジトリ"
+
+msgid "owner/apu-firmware"
+msgstr "所有者/apu-firmware"
+
+msgid "Repository whose releases contain the firmware builds (owner/name)."
+msgstr "ファームウェアのビルドをリリースに含むリポジトリ（所有者/名前）。"
+
+msgid "Access token"
+msgstr "アクセストークン"
+
+msgid "Only for a private repository: fine-grained token with read-only access to its contents."
+msgstr "プライベートリポジトリの場合のみ：内容への読み取り専用アクセス権を持つ fine-grained トークン。"
+
+msgid "Firmware variant"
+msgstr "ファームウェアの種類"
+
+msgid "Must match the firmware currently installed. Changing variant is not supported from here."
+msgstr "現在インストールされているファームウェアと一致する必要があります。ここから種類を変更することはできません。"
+
+msgid "Release candidates"
+msgstr "リリース候補"
+
+msgid "Also offer Dasharo release candidates (-rc) and builds of unreleased branches, for testing. They are not final releases. The final release is offered once it is out, and a release candidate is never offered over it."
+msgstr "テスト用に、Dasharo のリリース候補（-rc）と未リリースのブランチのビルドも提案します。これらは正式版ではありません。正式版はリリースされ次第提案され、リリース候補が正式版の代わりに提案されることはありません。"
+
+# System status (notification bell)
+msgid "APU coreboot firmware"
+msgstr "APU coreboot ファームウェア"
+
+msgid "New firmware has been written. A cold reset is required to start it."
+msgstr "新しいファームウェアが書き込まれました。起動するにはコールドリセットが必要です。"
+
+msgid "Firmware update failed: %s"
+msgstr "ファームウェアの更新に失敗しました：%s"
+
+msgid "Firmware %s is available (installed: %s)."
+msgstr "ファームウェア %s が利用可能です（インストール済み：%s）。"
+
+# Firmware page
+msgid "Firmware"
+msgstr "ファームウェア"
+
+msgid "Board"
+msgstr "ボード"
+
+msgid "Installed"
+msgstr "インストール済み"
+
+msgid "Latest build"
+msgstr "最新ビルド"
+
+msgid "Last check"
+msgstr "最終確認"
+
+msgid "Status"
+msgstr "状態"
+
+msgid "Check now"
+msgstr "今すぐ確認"
+
+msgid "Update firmware"
+msgstr "ファームウェアを更新"
+
+msgid "Cold reset"
+msgstr "コールドリセット"
+
+msgid "Not a PC Engines APU"
+msgstr "PC Engines APU ではありません"
+
+msgid "new"
+msgstr "新規"
+
+msgid "Not checked yet."
+msgstr "まだ確認していません。"
+
+msgid "An update is available."
+msgstr "更新があります。"
+
+msgid "Up to date."
+msgstr "最新です。"
+
+msgid "The current firmware will be backed up, then the new one written and verified. Do not cut the power during the update. A cold reset is needed afterwards to start the new firmware. Continue?"
+msgstr "現在のファームウェアをバックアップしてから、新しいファームウェアを書き込んで検証します。更新中は電源を切らないでください。その後、新しいファームウェアを起動するにはコールドリセットが必要です。続行しますか？"
+
+msgid "Update"
+msgstr "更新"
+
+msgid "Cancel"
+msgstr "キャンセル"
+
+msgid "Services will be stopped and the board powered off for a few seconds, then it will boot the new firmware. The network will be down for a few minutes. Continue?"
+msgstr "サービスを停止し、ボードの電源を数秒間切った後、新しいファームウェアで起動します。ネットワークは数分間使用できません。続行しますか？"
+
+msgid "Restarting. Reload this page in a few minutes."
+msgstr "再起動中です。数分後にこのページを再読み込みしてください。"
+
+# Backend messages (apufw.py)
+msgid "The flash is write protected (%s) and the whole image must be written: disable the protection. Nothing was written."
+msgstr "フラッシュは書き込み保護されており（%s）、イメージ全体を書き込む必要があります：保護を無効にしてください。何も書き込まれていません。"
+
+msgid "The flash is write protected (%s) and covers %s: disable the protection. Nothing was written."
+msgstr "フラッシュは書き込み保護されており（%s）、保護範囲に %s が含まれます：保護を無効にしてください。何も書き込まれていません。"
+
+msgid "The flash is write protected (%s): only RW_SECTION_A could be written, but the flash layout differs. Nothing was written."
+msgstr "フラッシュは書き込み保護されています（%s）：RW_SECTION_A のみ書き込み可能ですが、フラッシュのレイアウトが異なります。何も書き込まれていません。"
+
+msgid "The flash is write protected (%s): only RW_SECTION_A could be written, but it is signed with other keys than the read-only part (GBB), which would reject it. Nothing was written."
+msgstr "フラッシュは書き込み保護されています（%s）：RW_SECTION_A のみ書き込み可能ですが、読み取り専用部分（GBB）とは異なる鍵で署名されているため拒否されます。何も書き込まれていません。"
+
+msgid "This is not a PC Engines apu2/3/4/6 board."
+msgstr "PC Engines apu2/3/4/6 ボードではありません。"
+
+msgid "flashrom is not installed."
+msgstr "flashrom がインストールされていません。"
+
+msgid "The current firmware version could not be read."
+msgstr "現在のファームウェアのバージョンを読み取れませんでした。"
+
+msgid "Switching from UEFI to SeaBIOS must be done manually."
+msgstr "UEFI から SeaBIOS への切り替えは手動で行う必要があります。"
+
+msgid "Switching from SeaBIOS to UEFI must be done manually (OPNsense must boot in UEFI mode)."
+msgstr "SeaBIOS から UEFI への切り替えは手動で行う必要があります（OPNsense を UEFI モードで起動する必要があります）。"
+
+msgid "Firmware %s is running."
+msgstr "ファームウェア %s が動作中です。"
+
+msgid "The last operation was interrupted, see the log."
+msgstr "前回の操作は中断されました。ログを確認してください。"
+
+msgid "No GitHub repository configured."
+msgstr "GitHub リポジトリが設定されていません。"
+
+msgid "Unsupported board."
+msgstr "サポートされていないボードです。"
+
+msgid "GitHub query failed: %s"
+msgstr "GitHub への問い合わせに失敗しました：%s"
+
+msgid "No release for %s (%s) in %s."
+msgstr "%s（%s）用のリリースが %s にありません。"
+
+msgid "Unexpected error: %s"
+msgstr "予期しないエラー：%s"
+
+msgid "Preparing"
+msgstr "準備中"
+
+msgid "No newer firmware is available."
+msgstr "新しいファームウェアはありません。"
+
+msgid "Downloading %s"
+msgstr "%s をダウンロード中"
+
+msgid "Download failed: %s"
+msgstr "ダウンロードに失敗しました：%s"
+
+msgid "Checksum mismatch for %s (expected %s, got %s)."
+msgstr "%s のチェックサムが一致しません（期待値 %s、実際 %s）。"
+
+msgid "Backing up the current firmware"
+msgstr "現在のファームウェアをバックアップ中"
+
+msgid "Backup failed, nothing was written. Is the firmware write protection disabled?"
+msgstr "バックアップに失敗しました。何も書き込まれていません。ファームウェアの書き込み保護は無効になっていますか？"
+
+msgid "Writing %s"
+msgstr "%s を書き込み中"
+
+msgid "flashrom failed while writing. DO NOT REBOOT: retry the update, or restore %s with flashrom."
+msgstr "書き込み中に flashrom が失敗しました。再起動しないでください：更新を再試行するか、flashrom で %s を復元してください。"
+
+msgid "flashrom failed before writing, the firmware is unchanged."
+msgstr "書き込み前に flashrom が失敗しました。ファームウェアは変更されていません。"
+
+msgid "Firmware %s written and verified. A cold reset is required."
+msgstr "ファームウェア %s を書き込み、検証しました。コールドリセットが必要です。"
