@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.0](https://github.com/Aarklendoia/apu-firmware/compare/plugin-v1.2.0...plugin-v1.3.0) (2026-11-11)
+
+
+### Features
+
+* **plugin:** translate into every OPNsense interface language ([#39](https://github.com/Aarklendoia/apu-firmware/issues/39)) ([ef3b19a](https://github.com/Aarklendoia/apu-firmware/commit/ef3b19ad70265409a5d3aac738e969ac82688f37)), closes [#38](https://github.com/Aarklendoia/apu-firmware/issues/38)
+
 ## [1.2.0](https://github.com/Aarklendoia/apu-firmware/compare/plugin-v1.1.0...plugin-v1.2.0) (2026-11-10)
 
 
