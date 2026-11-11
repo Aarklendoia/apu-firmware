@@ -1,0 +1,198 @@
+# Machine translation, not reviewed by a native speaker: corrections are welcome.
+msgid ""
+msgstr ""
+"Project-Id-Version: os-apufirmware\n"
+"PO-Revision-Date: 2026-11-11 12:00+0100\n"
+"Last-Translator: machine translation\n"
+"Language-Team: Turkish\n"
+"Language: tr_TR\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+# Settings form
+msgid "Daily check"
+msgstr "Günlük denetim"
+
+msgid "Check for new firmware every night. New versions are announced in the system status."
+msgstr "Her gece yeni ürün yazılımı ara. Yeni sürümler sistem durumunda duyurulur."
+
+msgid "GitHub repository"
+msgstr "GitHub deposu"
+
+msgid "owner/apu-firmware"
+msgstr "sahip/apu-firmware"
+
+msgid "Repository whose releases contain the firmware builds (owner/name)."
+msgstr "Sürümleri ürün yazılımı derlemelerini içeren depo (sahip/ad)."
+
+msgid "Access token"
+msgstr "Erişim belirteci"
+
+msgid "Only for a private repository: fine-grained token with read-only access to its contents."
+msgstr "Yalnızca özel bir depo için: içeriğine salt okunur erişimi olan ayrıntılı izinli belirteç."
+
+msgid "Firmware variant"
+msgstr "Ürün yazılımı türü"
+
+msgid "Must match the firmware currently installed. Changing variant is not supported from here."
+msgstr "Şu anda kurulu ürün yazılımıyla eşleşmelidir. Tür değişikliği buradan desteklenmez."
+
+msgid "Release candidates"
+msgstr "Sürüm adayları"
+
+msgid "Also offer Dasharo release candidates (-rc) and builds of unreleased branches, for testing. They are not final releases. The final release is offered once it is out, and a release candidate is never offered over it."
+msgstr "Test için Dasharo sürüm adaylarını (-rc) ve yayımlanmamış dalların derlemelerini de öner. Bunlar son sürümler değildir. Son sürüm çıkar çıkmaz önerilir ve bir sürüm adayı asla onun yerine önerilmez."
+
+# System status (notification bell)
+msgid "APU coreboot firmware"
+msgstr "APU coreboot ürün yazılımı"
+
+msgid "New firmware has been written. A cold reset is required to start it."
+msgstr "Yeni ürün yazılımı yazıldı. Başlatmak için soğuk sıfırlama gerekir."
+
+msgid "Firmware update failed: %s"
+msgstr "Ürün yazılımı güncellemesi başarısız oldu: %s"
+
+msgid "Firmware %s is available (installed: %s)."
+msgstr "Ürün yazılımı %s kullanılabilir (kurulu: %s)."
+
+# Firmware page
+msgid "Firmware"
+msgstr "Ürün yazılımı"
+
+msgid "Board"
+msgstr "Kart"
+
+msgid "Installed"
+msgstr "Kurulu"
+
+msgid "Latest build"
+msgstr "En son derleme"
+
+msgid "Last check"
+msgstr "Son denetim"
+
+msgid "Status"
+msgstr "Durum"
+
+msgid "Check now"
+msgstr "Şimdi denetle"
+
+msgid "Update firmware"
+msgstr "Ürün yazılımını güncelle"
+
+msgid "Cold reset"
+msgstr "Soğuk sıfırlama"
+
+msgid "Not a PC Engines APU"
+msgstr "PC Engines APU değil"
+
+msgid "new"
+msgstr "yeni"
+
+msgid "Not checked yet."
+msgstr "Henüz denetlenmedi."
+
+msgid "An update is available."
+msgstr "Bir güncelleme var."
+
+msgid "Up to date."
+msgstr "Güncel."
+
+msgid "The current firmware will be backed up, then the new one written and verified. Do not cut the power during the update. A cold reset is needed afterwards to start the new firmware. Continue?"
+msgstr "Mevcut ürün yazılımı yedeklenecek, ardından yenisi yazılıp doğrulanacak. Güncelleme sırasında gücü kesmeyin. Ardından yeni ürün yazılımını başlatmak için soğuk sıfırlama gerekecek. Devam edilsin mi?"
+
+msgid "Update"
+msgstr "Güncelle"
+
+msgid "Cancel"
+msgstr "İptal"
+
+msgid "Services will be stopped and the board powered off for a few seconds, then it will boot the new firmware. The network will be down for a few minutes. Continue?"
+msgstr "Hizmetler durdurulacak ve kart birkaç saniye kapatılacak, ardından yeni ürün yazılımıyla açılacak. Ağ birkaç dakika kesik olacak. Devam edilsin mi?"
+
+msgid "Restarting. Reload this page in a few minutes."
+msgstr "Yeniden başlatılıyor. Bu sayfayı birkaç dakika sonra yeniden yükleyin."
+
+# Backend messages (apufw.py)
+msgid "The flash is write protected (%s) and the whole image must be written: disable the protection. Nothing was written."
+msgstr "Flash yazmaya karşı korumalı (%s) ve görüntünün tamamı yazılmalı: korumayı kapatın. Hiçbir şey yazılmadı."
+
+msgid "The flash is write protected (%s) and covers %s: disable the protection. Nothing was written."
+msgstr "Flash yazmaya karşı korumalı (%s) ve koruma %s alanını kapsıyor: korumayı kapatın. Hiçbir şey yazılmadı."
+
+msgid "The flash is write protected (%s): only RW_SECTION_A could be written, but the flash layout differs. Nothing was written."
+msgstr "Flash yazmaya karşı korumalı (%s): yalnızca RW_SECTION_A yazılabilirdi, ancak flash düzeni farklı. Hiçbir şey yazılmadı."
+
+msgid "The flash is write protected (%s): only RW_SECTION_A could be written, but it is signed with other keys than the read-only part (GBB), which would reject it. Nothing was written."
+msgstr "Flash yazmaya karşı korumalı (%s): yalnızca RW_SECTION_A yazılabilirdi, ancak salt okunur bölümden (GBB) farklı anahtarlarla imzalanmış ve o bölüm onu reddederdi. Hiçbir şey yazılmadı."
+
+msgid "This is not a PC Engines apu2/3/4/6 board."
+msgstr "Bu bir PC Engines apu2/3/4/6 kartı değil."
+
+msgid "flashrom is not installed."
+msgstr "flashrom kurulu değil."
+
+msgid "The current firmware version could not be read."
+msgstr "Mevcut ürün yazılımının sürümü okunamadı."
+
+msgid "Switching from UEFI to SeaBIOS must be done manually."
+msgstr "UEFI'den SeaBIOS'a geçiş elle yapılmalıdır."
+
+msgid "Switching from SeaBIOS to UEFI must be done manually (OPNsense must boot in UEFI mode)."
+msgstr "SeaBIOS'tan UEFI'ye geçiş elle yapılmalıdır (OPNsense UEFI kipinde açılmalıdır)."
+
+msgid "Firmware %s is running."
+msgstr "Ürün yazılımı %s çalışıyor."
+
+msgid "The last operation was interrupted, see the log."
+msgstr "Son işlem yarıda kesildi, günlüğe bakın."
+
+msgid "No GitHub repository configured."
+msgstr "Yapılandırılmış GitHub deposu yok."
+
+msgid "Unsupported board."
+msgstr "Desteklenmeyen kart."
+
+msgid "GitHub query failed: %s"
+msgstr "GitHub sorgusu başarısız oldu: %s"
+
+msgid "No release for %s (%s) in %s."
+msgstr "%s (%s) için %s içinde sürüm yok."
+
+msgid "Unexpected error: %s"
+msgstr "Beklenmeyen hata: %s"
+
+msgid "Preparing"
+msgstr "Hazırlanıyor"
+
+msgid "No newer firmware is available."
+msgstr "Daha yeni ürün yazılımı yok."
+
+msgid "Downloading %s"
+msgstr "%s indiriliyor"
+
+msgid "Download failed: %s"
+msgstr "İndirme başarısız oldu: %s"
+
+msgid "Checksum mismatch for %s (expected %s, got %s)."
+msgstr "%s için sağlama toplamı uyuşmuyor (beklenen %s, alınan %s)."
+
+msgid "Backing up the current firmware"
+msgstr "Mevcut ürün yazılımı yedekleniyor"
+
+msgid "Backup failed, nothing was written. Is the firmware write protection disabled?"
+msgstr "Yedekleme başarısız oldu, hiçbir şey yazılmadı. Ürün yazılımının yazma koruması kapalı mı?"
+
+msgid "Writing %s"
+msgstr "%s yazılıyor"
+
+msgid "flashrom failed while writing. DO NOT REBOOT: retry the update, or restore %s with flashrom."
+msgstr "flashrom yazma sırasında başarısız oldu. YENİDEN BAŞLATMAYIN: güncellemeyi yeniden deneyin ya da %s dosyasını flashrom ile geri yükleyin."
+
+msgid "flashrom failed before writing, the firmware is unchanged."
+msgstr "flashrom yazmadan önce başarısız oldu, ürün yazılımı değişmedi."
+
+msgid "Firmware %s written and verified. A cold reset is required."
+msgstr "Ürün yazılımı %s yazıldı ve doğrulandı. Soğuk sıfırlama gerekir."

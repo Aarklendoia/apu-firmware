@@ -1,0 +1,198 @@
+# Machine translation, not reviewed by a native speaker: corrections are welcome.
+msgid ""
+msgstr ""
+"Project-Id-Version: os-apufirmware\n"
+"PO-Revision-Date: 2026-11-11 12:00+0100\n"
+"Last-Translator: machine translation\n"
+"Language-Team: Vietnamese\n"
+"Language: vi_VN\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+# Settings form
+msgid "Daily check"
+msgstr "Kiểm tra hằng ngày"
+
+msgid "Check for new firmware every night. New versions are announced in the system status."
+msgstr "Tìm firmware mới mỗi đêm. Phiên bản mới được thông báo trong trạng thái hệ thống."
+
+msgid "GitHub repository"
+msgstr "Kho GitHub"
+
+msgid "owner/apu-firmware"
+msgstr "chủ-sở-hữu/apu-firmware"
+
+msgid "Repository whose releases contain the firmware builds (owner/name)."
+msgstr "Kho có các bản phát hành chứa bản dựng firmware (chủ sở hữu/tên)."
+
+msgid "Access token"
+msgstr "Mã truy cập"
+
+msgid "Only for a private repository: fine-grained token with read-only access to its contents."
+msgstr "Chỉ dành cho kho riêng tư: mã truy cập chi tiết với quyền chỉ đọc nội dung của kho."
+
+msgid "Firmware variant"
+msgstr "Biến thể firmware"
+
+msgid "Must match the firmware currently installed. Changing variant is not supported from here."
+msgstr "Phải khớp với firmware đang được cài đặt. Không hỗ trợ đổi biến thể tại đây."
+
+msgid "Release candidates"
+msgstr "Bản phát hành ứng viên"
+
+msgid "Also offer Dasharo release candidates (-rc) and builds of unreleased branches, for testing. They are not final releases. The final release is offered once it is out, and a release candidate is never offered over it."
+msgstr "Đề xuất cả các bản phát hành ứng viên của Dasharo (-rc) và bản dựng của các nhánh chưa phát hành, để thử nghiệm. Đây không phải là bản chính thức. Bản chính thức được đề xuất ngay khi ra mắt, và không bao giờ đề xuất bản ứng viên thay cho nó."
+
+# System status (notification bell)
+msgid "APU coreboot firmware"
+msgstr "Firmware coreboot cho APU"
+
+msgid "New firmware has been written. A cold reset is required to start it."
+msgstr "Firmware mới đã được ghi. Cần khởi động lại nguội để chạy firmware này."
+
+msgid "Firmware update failed: %s"
+msgstr "Cập nhật firmware thất bại: %s"
+
+msgid "Firmware %s is available (installed: %s)."
+msgstr "Có firmware %s (đã cài đặt: %s)."
+
+# Firmware page
+msgid "Firmware"
+msgstr "Firmware"
+
+msgid "Board"
+msgstr "Bo mạch"
+
+msgid "Installed"
+msgstr "Đã cài đặt"
+
+msgid "Latest build"
+msgstr "Bản dựng mới nhất"
+
+msgid "Last check"
+msgstr "Lần kiểm tra cuối"
+
+msgid "Status"
+msgstr "Trạng thái"
+
+msgid "Check now"
+msgstr "Kiểm tra ngay"
+
+msgid "Update firmware"
+msgstr "Cập nhật firmware"
+
+msgid "Cold reset"
+msgstr "Khởi động lại nguội"
+
+msgid "Not a PC Engines APU"
+msgstr "Không phải PC Engines APU"
+
+msgid "new"
+msgstr "mới"
+
+msgid "Not checked yet."
+msgstr "Chưa kiểm tra."
+
+msgid "An update is available."
+msgstr "Có bản cập nhật."
+
+msgid "Up to date."
+msgstr "Đã cập nhật."
+
+msgid "The current firmware will be backed up, then the new one written and verified. Do not cut the power during the update. A cold reset is needed afterwards to start the new firmware. Continue?"
+msgstr "Firmware hiện tại sẽ được sao lưu, sau đó firmware mới sẽ được ghi và xác minh. Không ngắt nguồn điện trong khi cập nhật. Sau đó cần khởi động lại nguội để chạy firmware mới. Tiếp tục?"
+
+msgid "Update"
+msgstr "Cập nhật"
+
+msgid "Cancel"
+msgstr "Hủy"
+
+msgid "Services will be stopped and the board powered off for a few seconds, then it will boot the new firmware. The network will be down for a few minutes. Continue?"
+msgstr "Các dịch vụ sẽ bị dừng và bo mạch sẽ tắt nguồn trong vài giây, sau đó khởi động với firmware mới. Mạng sẽ bị gián đoạn trong vài phút. Tiếp tục?"
+
+msgid "Restarting. Reload this page in a few minutes."
+msgstr "Đang khởi động lại. Hãy tải lại trang này sau vài phút."
+
+# Backend messages (apufw.py)
+msgid "The flash is write protected (%s) and the whole image must be written: disable the protection. Nothing was written."
+msgstr "Bộ nhớ flash đang được bảo vệ ghi (%s) và cần ghi toàn bộ ảnh: hãy tắt bảo vệ. Chưa ghi gì."
+
+msgid "The flash is write protected (%s) and covers %s: disable the protection. Nothing was written."
+msgstr "Bộ nhớ flash đang được bảo vệ ghi (%s) và vùng bảo vệ bao gồm %s: hãy tắt bảo vệ. Chưa ghi gì."
+
+msgid "The flash is write protected (%s): only RW_SECTION_A could be written, but the flash layout differs. Nothing was written."
+msgstr "Bộ nhớ flash đang được bảo vệ ghi (%s): chỉ có thể ghi RW_SECTION_A, nhưng bố cục flash khác. Chưa ghi gì."
+
+msgid "The flash is write protected (%s): only RW_SECTION_A could be written, but it is signed with other keys than the read-only part (GBB), which would reject it. Nothing was written."
+msgstr "Bộ nhớ flash đang được bảo vệ ghi (%s): chỉ có thể ghi RW_SECTION_A, nhưng nó được ký bằng khóa khác với phần chỉ đọc (GBB), phần này sẽ từ chối nó. Chưa ghi gì."
+
+msgid "This is not a PC Engines apu2/3/4/6 board."
+msgstr "Đây không phải bo mạch PC Engines apu2/3/4/6."
+
+msgid "flashrom is not installed."
+msgstr "flashrom chưa được cài đặt."
+
+msgid "The current firmware version could not be read."
+msgstr "Không đọc được phiên bản firmware hiện tại."
+
+msgid "Switching from UEFI to SeaBIOS must be done manually."
+msgstr "Việc chuyển từ UEFI sang SeaBIOS phải thực hiện thủ công."
+
+msgid "Switching from SeaBIOS to UEFI must be done manually (OPNsense must boot in UEFI mode)."
+msgstr "Việc chuyển từ SeaBIOS sang UEFI phải thực hiện thủ công (OPNsense phải khởi động ở chế độ UEFI)."
+
+msgid "Firmware %s is running."
+msgstr "Firmware %s đang chạy."
+
+msgid "The last operation was interrupted, see the log."
+msgstr "Thao tác gần nhất đã bị gián đoạn, xem nhật ký."
+
+msgid "No GitHub repository configured."
+msgstr "Chưa cấu hình kho GitHub."
+
+msgid "Unsupported board."
+msgstr "Bo mạch không được hỗ trợ."
+
+msgid "GitHub query failed: %s"
+msgstr "Truy vấn GitHub thất bại: %s"
+
+msgid "No release for %s (%s) in %s."
+msgstr "Không có bản phát hành cho %s (%s) trong %s."
+
+msgid "Unexpected error: %s"
+msgstr "Lỗi không mong muốn: %s"
+
+msgid "Preparing"
+msgstr "Đang chuẩn bị"
+
+msgid "No newer firmware is available."
+msgstr "Không có firmware mới hơn."
+
+msgid "Downloading %s"
+msgstr "Đang tải xuống %s"
+
+msgid "Download failed: %s"
+msgstr "Tải xuống thất bại: %s"
+
+msgid "Checksum mismatch for %s (expected %s, got %s)."
+msgstr "Tổng kiểm tra không khớp cho %s (mong đợi %s, nhận được %s)."
+
+msgid "Backing up the current firmware"
+msgstr "Đang sao lưu firmware hiện tại"
+
+msgid "Backup failed, nothing was written. Is the firmware write protection disabled?"
+msgstr "Sao lưu thất bại, chưa ghi gì. Bảo vệ ghi của firmware đã được tắt chưa?"
+
+msgid "Writing %s"
+msgstr "Đang ghi %s"
+
+msgid "flashrom failed while writing. DO NOT REBOOT: retry the update, or restore %s with flashrom."
+msgstr "flashrom thất bại trong khi ghi. KHÔNG KHỞI ĐỘNG LẠI: hãy thử cập nhật lại, hoặc khôi phục %s bằng flashrom."
+
+msgid "flashrom failed before writing, the firmware is unchanged."
+msgstr "flashrom thất bại trước khi ghi, firmware không thay đổi."
+
+msgid "Firmware %s written and verified. A cold reset is required."
+msgstr "Đã ghi và xác minh firmware %s. Cần khởi động lại nguội."

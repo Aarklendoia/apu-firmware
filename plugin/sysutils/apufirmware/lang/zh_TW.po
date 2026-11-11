@@ -1,0 +1,198 @@
+# Machine translation, not reviewed by a native speaker: corrections are welcome.
+msgid ""
+msgstr ""
+"Project-Id-Version: os-apufirmware\n"
+"PO-Revision-Date: 2026-11-11 12:00+0100\n"
+"Last-Translator: machine translation\n"
+"Language-Team: Chinese (Traditional)\n"
+"Language: zh_TW\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+# Settings form
+msgid "Daily check"
+msgstr "每日檢查"
+
+msgid "Check for new firmware every night. New versions are announced in the system status."
+msgstr "每晚檢查是否有新韌體。新版本會在系統狀態中通知。"
+
+msgid "GitHub repository"
+msgstr "GitHub 儲存庫"
+
+msgid "owner/apu-firmware"
+msgstr "擁有者/apu-firmware"
+
+msgid "Repository whose releases contain the firmware builds (owner/name)."
+msgstr "發行版本中包含韌體建置的儲存庫（擁有者/名稱）。"
+
+msgid "Access token"
+msgstr "存取權杖"
+
+msgid "Only for a private repository: fine-grained token with read-only access to its contents."
+msgstr "僅用於私人儲存庫：對其內容只有唯讀權限的細粒度權杖。"
+
+msgid "Firmware variant"
+msgstr "韌體變體"
+
+msgid "Must match the firmware currently installed. Changing variant is not supported from here."
+msgstr "必須與目前安裝的韌體一致。此處不支援變更變體。"
+
+msgid "Release candidates"
+msgstr "候選版本"
+
+msgid "Also offer Dasharo release candidates (-rc) and builds of unreleased branches, for testing. They are not final releases. The final release is offered once it is out, and a release candidate is never offered over it."
+msgstr "同時提供 Dasharo 候選版本（-rc）和未發行分支的建置，供測試使用。它們不是正式版本。正式版本一發行即會提供，且絕不會以候選版本取代它。"
+
+# System status (notification bell)
+msgid "APU coreboot firmware"
+msgstr "APU coreboot 韌體"
+
+msgid "New firmware has been written. A cold reset is required to start it."
+msgstr "新韌體已寫入。需要冷重新啟動才能啟動它。"
+
+msgid "Firmware update failed: %s"
+msgstr "韌體更新失敗：%s"
+
+msgid "Firmware %s is available (installed: %s)."
+msgstr "韌體 %s 可用（已安裝：%s）。"
+
+# Firmware page
+msgid "Firmware"
+msgstr "韌體"
+
+msgid "Board"
+msgstr "主機板"
+
+msgid "Installed"
+msgstr "已安裝"
+
+msgid "Latest build"
+msgstr "最新建置"
+
+msgid "Last check"
+msgstr "上次檢查"
+
+msgid "Status"
+msgstr "狀態"
+
+msgid "Check now"
+msgstr "立即檢查"
+
+msgid "Update firmware"
+msgstr "更新韌體"
+
+msgid "Cold reset"
+msgstr "冷重新啟動"
+
+msgid "Not a PC Engines APU"
+msgstr "不是 PC Engines APU"
+
+msgid "new"
+msgstr "新"
+
+msgid "Not checked yet."
+msgstr "尚未檢查。"
+
+msgid "An update is available."
+msgstr "有可用的更新。"
+
+msgid "Up to date."
+msgstr "已是最新。"
+
+msgid "The current firmware will be backed up, then the new one written and verified. Do not cut the power during the update. A cold reset is needed afterwards to start the new firmware. Continue?"
+msgstr "將先備份目前的韌體，再寫入並驗證新韌體。更新期間請勿斷電。之後需要冷重新啟動才能啟動新韌體。要繼續嗎？"
+
+msgid "Update"
+msgstr "更新"
+
+msgid "Cancel"
+msgstr "取消"
+
+msgid "Services will be stopped and the board powered off for a few seconds, then it will boot the new firmware. The network will be down for a few minutes. Continue?"
+msgstr "服務將會停止，主機板將斷電數秒，然後以新韌體開機。網路將中斷數分鐘。要繼續嗎？"
+
+msgid "Restarting. Reload this page in a few minutes."
+msgstr "正在重新啟動。請在數分鐘後重新載入此頁面。"
+
+# Backend messages (apufw.py)
+msgid "The flash is write protected (%s) and the whole image must be written: disable the protection. Nothing was written."
+msgstr "快閃記憶體已寫入保護（%s），且必須寫入完整映像：請停用保護。未寫入任何內容。"
+
+msgid "The flash is write protected (%s) and covers %s: disable the protection. Nothing was written."
+msgstr "快閃記憶體已寫入保護（%s），且保護範圍涵蓋 %s：請停用保護。未寫入任何內容。"
+
+msgid "The flash is write protected (%s): only RW_SECTION_A could be written, but the flash layout differs. Nothing was written."
+msgstr "快閃記憶體已寫入保護（%s）：只能寫入 RW_SECTION_A，但快閃記憶體配置不同。未寫入任何內容。"
+
+msgid "The flash is write protected (%s): only RW_SECTION_A could be written, but it is signed with other keys than the read-only part (GBB), which would reject it. Nothing was written."
+msgstr "快閃記憶體已寫入保護（%s）：只能寫入 RW_SECTION_A，但它所用的簽章金鑰與唯讀部分（GBB）不同，會被唯讀部分拒絕。未寫入任何內容。"
+
+msgid "This is not a PC Engines apu2/3/4/6 board."
+msgstr "這不是 PC Engines apu2/3/4/6 主機板。"
+
+msgid "flashrom is not installed."
+msgstr "未安裝 flashrom。"
+
+msgid "The current firmware version could not be read."
+msgstr "無法讀取目前韌體的版本。"
+
+msgid "Switching from UEFI to SeaBIOS must be done manually."
+msgstr "從 UEFI 切換到 SeaBIOS 必須手動進行。"
+
+msgid "Switching from SeaBIOS to UEFI must be done manually (OPNsense must boot in UEFI mode)."
+msgstr "從 SeaBIOS 切換到 UEFI 必須手動進行（OPNsense 必須以 UEFI 模式開機）。"
+
+msgid "Firmware %s is running."
+msgstr "正在執行韌體 %s。"
+
+msgid "The last operation was interrupted, see the log."
+msgstr "上次操作已中斷，請查看記錄。"
+
+msgid "No GitHub repository configured."
+msgstr "未設定 GitHub 儲存庫。"
+
+msgid "Unsupported board."
+msgstr "不支援的主機板。"
+
+msgid "GitHub query failed: %s"
+msgstr "GitHub 查詢失敗：%s"
+
+msgid "No release for %s (%s) in %s."
+msgstr "沒有適用於 %s（%s）的發行版本，儲存庫：%s。"
+
+msgid "Unexpected error: %s"
+msgstr "非預期的錯誤：%s"
+
+msgid "Preparing"
+msgstr "準備中"
+
+msgid "No newer firmware is available."
+msgstr "沒有更新的韌體。"
+
+msgid "Downloading %s"
+msgstr "正在下載 %s"
+
+msgid "Download failed: %s"
+msgstr "下載失敗：%s"
+
+msgid "Checksum mismatch for %s (expected %s, got %s)."
+msgstr "%s 的檢查碼不符（預期 %s，實際 %s）。"
+
+msgid "Backing up the current firmware"
+msgstr "正在備份目前的韌體"
+
+msgid "Backup failed, nothing was written. Is the firmware write protection disabled?"
+msgstr "備份失敗，未寫入任何內容。韌體的寫入保護是否已停用？"
+
+msgid "Writing %s"
+msgstr "正在寫入 %s"
+
+msgid "flashrom failed while writing. DO NOT REBOOT: retry the update, or restore %s with flashrom."
+msgstr "flashrom 寫入時失敗。請勿重新開機：請重試更新，或使用 flashrom 還原 %s。"
+
+msgid "flashrom failed before writing, the firmware is unchanged."
+msgstr "flashrom 在寫入前失敗，韌體未變更。"
+
+msgid "Firmware %s written and verified. A cold reset is required."
+msgstr "韌體 %s 已寫入並驗證。需要冷重新啟動。"

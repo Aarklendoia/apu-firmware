@@ -1,0 +1,198 @@
+# Machine translation, not reviewed by a native speaker: corrections are welcome.
+msgid ""
+msgstr ""
+"Project-Id-Version: os-apufirmware\n"
+"PO-Revision-Date: 2026-11-11 12:00+0100\n"
+"Last-Translator: machine translation\n"
+"Language-Team: Russian\n"
+"Language: ru_RU\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+# Settings form
+msgid "Daily check"
+msgstr "Ежедневная проверка"
+
+msgid "Check for new firmware every night. New versions are announced in the system status."
+msgstr "Каждую ночь проверять наличие новой прошивки. О новых версиях сообщается в состоянии системы."
+
+msgid "GitHub repository"
+msgstr "Репозиторий GitHub"
+
+msgid "owner/apu-firmware"
+msgstr "владелец/apu-firmware"
+
+msgid "Repository whose releases contain the firmware builds (owner/name)."
+msgstr "Репозиторий, релизы которого содержат сборки прошивки (владелец/имя)."
+
+msgid "Access token"
+msgstr "Токен доступа"
+
+msgid "Only for a private repository: fine-grained token with read-only access to its contents."
+msgstr "Только для приватного репозитория: токен с детальными правами и доступом к содержимому только на чтение."
+
+msgid "Firmware variant"
+msgstr "Вариант прошивки"
+
+msgid "Must match the firmware currently installed. Changing variant is not supported from here."
+msgstr "Должен соответствовать установленной прошивке. Смена варианта здесь не поддерживается."
+
+msgid "Release candidates"
+msgstr "Релиз-кандидаты"
+
+msgid "Also offer Dasharo release candidates (-rc) and builds of unreleased branches, for testing. They are not final releases. The final release is offered once it is out, and a release candidate is never offered over it."
+msgstr "Также предлагать релиз-кандидаты Dasharo (-rc) и сборки неопубликованных веток, для тестирования. Это не окончательные версии. Окончательная версия предлагается сразу после выхода, и релиз-кандидат никогда не предлагается вместо неё."
+
+# System status (notification bell)
+msgid "APU coreboot firmware"
+msgstr "Прошивка coreboot для APU"
+
+msgid "New firmware has been written. A cold reset is required to start it."
+msgstr "Новая прошивка записана. Для её запуска требуется холодный перезапуск."
+
+msgid "Firmware update failed: %s"
+msgstr "Ошибка обновления прошивки: %s"
+
+msgid "Firmware %s is available (installed: %s)."
+msgstr "Доступна прошивка %s (установлена: %s)."
+
+# Firmware page
+msgid "Firmware"
+msgstr "Прошивка"
+
+msgid "Board"
+msgstr "Плата"
+
+msgid "Installed"
+msgstr "Установлена"
+
+msgid "Latest build"
+msgstr "Последняя сборка"
+
+msgid "Last check"
+msgstr "Последняя проверка"
+
+msgid "Status"
+msgstr "Состояние"
+
+msgid "Check now"
+msgstr "Проверить сейчас"
+
+msgid "Update firmware"
+msgstr "Обновить прошивку"
+
+msgid "Cold reset"
+msgstr "Холодный перезапуск"
+
+msgid "Not a PC Engines APU"
+msgstr "Это не PC Engines APU"
+
+msgid "new"
+msgstr "новая"
+
+msgid "Not checked yet."
+msgstr "Ещё не проверялось."
+
+msgid "An update is available."
+msgstr "Доступно обновление."
+
+msgid "Up to date."
+msgstr "Актуальна."
+
+msgid "The current firmware will be backed up, then the new one written and verified. Do not cut the power during the update. A cold reset is needed afterwards to start the new firmware. Continue?"
+msgstr "Текущая прошивка будет сохранена, затем новая будет записана и проверена. Не отключайте питание во время обновления. После этого для запуска новой прошивки потребуется холодный перезапуск. Продолжить?"
+
+msgid "Update"
+msgstr "Обновить"
+
+msgid "Cancel"
+msgstr "Отмена"
+
+msgid "Services will be stopped and the board powered off for a few seconds, then it will boot the new firmware. The network will be down for a few minutes. Continue?"
+msgstr "Службы будут остановлены, а плата обесточена на несколько секунд, затем она загрузится с новой прошивкой. Сеть будет недоступна несколько минут. Продолжить?"
+
+msgid "Restarting. Reload this page in a few minutes."
+msgstr "Перезапуск. Обновите эту страницу через несколько минут."
+
+# Backend messages (apufw.py)
+msgid "The flash is write protected (%s) and the whole image must be written: disable the protection. Nothing was written."
+msgstr "Флеш-память защищена от записи (%s), а записать нужно весь образ: отключите защиту. Ничего не записано."
+
+msgid "The flash is write protected (%s) and covers %s: disable the protection. Nothing was written."
+msgstr "Флеш-память защищена от записи (%s), и защита охватывает %s: отключите защиту. Ничего не записано."
+
+msgid "The flash is write protected (%s): only RW_SECTION_A could be written, but the flash layout differs. Nothing was written."
+msgstr "Флеш-память защищена от записи (%s): можно было бы записать только RW_SECTION_A, но разметка флеш-памяти отличается. Ничего не записано."
+
+msgid "The flash is write protected (%s): only RW_SECTION_A could be written, but it is signed with other keys than the read-only part (GBB), which would reject it. Nothing was written."
+msgstr "Флеш-память защищена от записи (%s): можно было бы записать только RW_SECTION_A, но она подписана другими ключами, чем часть только для чтения (GBB), которая её отвергнет. Ничего не записано."
+
+msgid "This is not a PC Engines apu2/3/4/6 board."
+msgstr "Это не плата PC Engines apu2/3/4/6."
+
+msgid "flashrom is not installed."
+msgstr "flashrom не установлен."
+
+msgid "The current firmware version could not be read."
+msgstr "Не удалось прочитать версию текущей прошивки."
+
+msgid "Switching from UEFI to SeaBIOS must be done manually."
+msgstr "Переход с UEFI на SeaBIOS нужно выполнить вручную."
+
+msgid "Switching from SeaBIOS to UEFI must be done manually (OPNsense must boot in UEFI mode)."
+msgstr "Переход с SeaBIOS на UEFI нужно выполнить вручную (OPNsense должен загружаться в режиме UEFI)."
+
+msgid "Firmware %s is running."
+msgstr "Работает прошивка %s."
+
+msgid "The last operation was interrupted, see the log."
+msgstr "Последняя операция была прервана, см. журнал."
+
+msgid "No GitHub repository configured."
+msgstr "Репозиторий GitHub не настроен."
+
+msgid "Unsupported board."
+msgstr "Плата не поддерживается."
+
+msgid "GitHub query failed: %s"
+msgstr "Ошибка запроса к GitHub: %s"
+
+msgid "No release for %s (%s) in %s."
+msgstr "Нет релиза для %s (%s) в %s."
+
+msgid "Unexpected error: %s"
+msgstr "Непредвиденная ошибка: %s"
+
+msgid "Preparing"
+msgstr "Подготовка"
+
+msgid "No newer firmware is available."
+msgstr "Более новой прошивки нет."
+
+msgid "Downloading %s"
+msgstr "Загрузка %s"
+
+msgid "Download failed: %s"
+msgstr "Ошибка загрузки: %s"
+
+msgid "Checksum mismatch for %s (expected %s, got %s)."
+msgstr "Неверная контрольная сумма для %s (ожидалось %s, получено %s)."
+
+msgid "Backing up the current firmware"
+msgstr "Сохранение текущей прошивки"
+
+msgid "Backup failed, nothing was written. Is the firmware write protection disabled?"
+msgstr "Ошибка резервного копирования, ничего не записано. Отключена ли защита прошивки от записи?"
+
+msgid "Writing %s"
+msgstr "Запись %s"
+
+msgid "flashrom failed while writing. DO NOT REBOOT: retry the update, or restore %s with flashrom."
+msgstr "Сбой flashrom во время записи. НЕ ПЕРЕЗАГРУЖАЙТЕ: повторите обновление или восстановите %s с помощью flashrom."
+
+msgid "flashrom failed before writing, the firmware is unchanged."
+msgstr "Сбой flashrom до начала записи, прошивка не изменена."
+
+msgid "Firmware %s written and verified. A cold reset is required."
+msgstr "Прошивка %s записана и проверена. Требуется холодный перезапуск."

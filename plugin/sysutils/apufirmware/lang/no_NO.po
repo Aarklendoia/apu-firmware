@@ -1,0 +1,198 @@
+# Machine translation, not reviewed by a native speaker: corrections are welcome.
+msgid ""
+msgstr ""
+"Project-Id-Version: os-apufirmware\n"
+"PO-Revision-Date: 2026-11-11 12:00+0100\n"
+"Last-Translator: machine translation\n"
+"Language-Team: Norwegian\n"
+"Language: no_NO\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+# Settings form
+msgid "Daily check"
+msgstr "Daglig sjekk"
+
+msgid "Check for new firmware every night. New versions are announced in the system status."
+msgstr "Se etter ny fastvare hver natt. Nye versjoner varsles i systemstatusen."
+
+msgid "GitHub repository"
+msgstr "GitHub-repositorium"
+
+msgid "owner/apu-firmware"
+msgstr "eier/apu-firmware"
+
+msgid "Repository whose releases contain the firmware builds (owner/name)."
+msgstr "Repositorium der utgivelsene inneholder fastvarebyggene (eier/navn)."
+
+msgid "Access token"
+msgstr "Tilgangstoken"
+
+msgid "Only for a private repository: fine-grained token with read-only access to its contents."
+msgstr "Kun for et privat repositorium: finkornet token med skrivebeskyttet tilgang til innholdet."
+
+msgid "Firmware variant"
+msgstr "Fastvarevariant"
+
+msgid "Must match the firmware currently installed. Changing variant is not supported from here."
+msgstr "Må samsvare med fastvaren som er installert nå. Bytte av variant støttes ikke herfra."
+
+msgid "Release candidates"
+msgstr "Utgivelseskandidater"
+
+msgid "Also offer Dasharo release candidates (-rc) and builds of unreleased branches, for testing. They are not final releases. The final release is offered once it is out, and a release candidate is never offered over it."
+msgstr "Tilby også Dasharo-utgivelseskandidater (-rc) og bygg av upubliserte grener, for testing. Dette er ikke endelige versjoner. Den endelige versjonen tilbys så snart den er ute, og en utgivelseskandidat tilbys aldri i stedet for den."
+
+# System status (notification bell)
+msgid "APU coreboot firmware"
+msgstr "Coreboot-fastvare for APU"
+
+msgid "New firmware has been written. A cold reset is required to start it."
+msgstr "Ny fastvare er skrevet. En kaldstart er nødvendig for å starte den."
+
+msgid "Firmware update failed: %s"
+msgstr "Fastvareoppdateringen mislyktes: %s"
+
+msgid "Firmware %s is available (installed: %s)."
+msgstr "Fastvare %s er tilgjengelig (installert: %s)."
+
+# Firmware page
+msgid "Firmware"
+msgstr "Fastvare"
+
+msgid "Board"
+msgstr "Kort"
+
+msgid "Installed"
+msgstr "Installert"
+
+msgid "Latest build"
+msgstr "Nyeste bygg"
+
+msgid "Last check"
+msgstr "Siste sjekk"
+
+msgid "Status"
+msgstr "Status"
+
+msgid "Check now"
+msgstr "Sjekk nå"
+
+msgid "Update firmware"
+msgstr "Oppdater fastvaren"
+
+msgid "Cold reset"
+msgstr "Kaldstart"
+
+msgid "Not a PC Engines APU"
+msgstr "Ikke en PC Engines APU"
+
+msgid "new"
+msgstr "ny"
+
+msgid "Not checked yet."
+msgstr "Ikke sjekket ennå."
+
+msgid "An update is available."
+msgstr "En oppdatering er tilgjengelig."
+
+msgid "Up to date."
+msgstr "Oppdatert."
+
+msgid "The current firmware will be backed up, then the new one written and verified. Do not cut the power during the update. A cold reset is needed afterwards to start the new firmware. Continue?"
+msgstr "Den nåværende fastvaren blir sikkerhetskopiert, deretter blir den nye skrevet og verifisert. Ikke bryt strømmen under oppdateringen. Etterpå trengs en kaldstart for å starte den nye fastvaren. Fortsette?"
+
+msgid "Update"
+msgstr "Oppdater"
+
+msgid "Cancel"
+msgstr "Avbryt"
+
+msgid "Services will be stopped and the board powered off for a few seconds, then it will boot the new firmware. The network will be down for a few minutes. Continue?"
+msgstr "Tjenestene stoppes og kortet slås av i noen sekunder, deretter starter det med den nye fastvaren. Nettverket er nede i noen minutter. Fortsette?"
+
+msgid "Restarting. Reload this page in a few minutes."
+msgstr "Starter på nytt. Last inn denne siden på nytt om noen minutter."
+
+# Backend messages (apufw.py)
+msgid "The flash is write protected (%s) and the whole image must be written: disable the protection. Nothing was written."
+msgstr "Flashminnet er skrivebeskyttet (%s) og hele bildet må skrives: slå av beskyttelsen. Ingenting ble skrevet."
+
+msgid "The flash is write protected (%s) and covers %s: disable the protection. Nothing was written."
+msgstr "Flashminnet er skrivebeskyttet (%s) og beskyttelsen dekker %s: slå av beskyttelsen. Ingenting ble skrevet."
+
+msgid "The flash is write protected (%s): only RW_SECTION_A could be written, but the flash layout differs. Nothing was written."
+msgstr "Flashminnet er skrivebeskyttet (%s): bare RW_SECTION_A kunne skrives, men flashoppsettet er annerledes. Ingenting ble skrevet."
+
+msgid "The flash is write protected (%s): only RW_SECTION_A could be written, but it is signed with other keys than the read-only part (GBB), which would reject it. Nothing was written."
+msgstr "Flashminnet er skrivebeskyttet (%s): bare RW_SECTION_A kunne skrives, men den er signert med andre nøkler enn den skrivebeskyttede delen (GBB), som ville avvise den. Ingenting ble skrevet."
+
+msgid "This is not a PC Engines apu2/3/4/6 board."
+msgstr "Dette er ikke et PC Engines apu2/3/4/6-kort."
+
+msgid "flashrom is not installed."
+msgstr "flashrom er ikke installert."
+
+msgid "The current firmware version could not be read."
+msgstr "Versjonen av den nåværende fastvaren kunne ikke leses."
+
+msgid "Switching from UEFI to SeaBIOS must be done manually."
+msgstr "Bytte fra UEFI til SeaBIOS må gjøres manuelt."
+
+msgid "Switching from SeaBIOS to UEFI must be done manually (OPNsense must boot in UEFI mode)."
+msgstr "Bytte fra SeaBIOS til UEFI må gjøres manuelt (OPNsense må starte i UEFI-modus)."
+
+msgid "Firmware %s is running."
+msgstr "Fastvare %s kjører."
+
+msgid "The last operation was interrupted, see the log."
+msgstr "Den siste operasjonen ble avbrutt, se loggen."
+
+msgid "No GitHub repository configured."
+msgstr "Ingen GitHub-repositorium er konfigurert."
+
+msgid "Unsupported board."
+msgstr "Kortet støttes ikke."
+
+msgid "GitHub query failed: %s"
+msgstr "GitHub-forespørselen mislyktes: %s"
+
+msgid "No release for %s (%s) in %s."
+msgstr "Ingen utgivelse for %s (%s) i %s."
+
+msgid "Unexpected error: %s"
+msgstr "Uventet feil: %s"
+
+msgid "Preparing"
+msgstr "Forbereder"
+
+msgid "No newer firmware is available."
+msgstr "Ingen nyere fastvare er tilgjengelig."
+
+msgid "Downloading %s"
+msgstr "Laster ned %s"
+
+msgid "Download failed: %s"
+msgstr "Nedlastingen mislyktes: %s"
+
+msgid "Checksum mismatch for %s (expected %s, got %s)."
+msgstr "Feil sjekksum for %s (forventet %s, fikk %s)."
+
+msgid "Backing up the current firmware"
+msgstr "Sikkerhetskopierer den nåværende fastvaren"
+
+msgid "Backup failed, nothing was written. Is the firmware write protection disabled?"
+msgstr "Sikkerhetskopieringen mislyktes, ingenting ble skrevet. Er skrivebeskyttelsen av fastvaren slått av?"
+
+msgid "Writing %s"
+msgstr "Skriver %s"
+
+msgid "flashrom failed while writing. DO NOT REBOOT: retry the update, or restore %s with flashrom."
+msgstr "flashrom mislyktes under skrivingen. IKKE START PÅ NYTT: prøv oppdateringen igjen, eller gjenopprett %s med flashrom."
+
+msgid "flashrom failed before writing, the firmware is unchanged."
+msgstr "flashrom mislyktes før skrivingen, fastvaren er uendret."
+
+msgid "Firmware %s written and verified. A cold reset is required."
+msgstr "Fastvare %s skrevet og verifisert. En kaldstart er nødvendig."

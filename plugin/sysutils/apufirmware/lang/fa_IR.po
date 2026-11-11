@@ -1,0 +1,198 @@
+# Machine translation, not reviewed by a native speaker: corrections are welcome.
+msgid ""
+msgstr ""
+"Project-Id-Version: os-apufirmware\n"
+"PO-Revision-Date: 2026-11-11 12:00+0100\n"
+"Last-Translator: machine translation\n"
+"Language-Team: Persian\n"
+"Language: fa_IR\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+# Settings form
+msgid "Daily check"
+msgstr "بررسی روزانه"
+
+msgid "Check for new firmware every night. New versions are announced in the system status."
+msgstr "هر شب به دنبال میان‌افزار جدید بگرد. نسخه‌های جدید در وضعیت سیستم اعلام می‌شوند."
+
+msgid "GitHub repository"
+msgstr "مخزن GitHub"
+
+msgid "owner/apu-firmware"
+msgstr "مالک/apu-firmware"
+
+msgid "Repository whose releases contain the firmware builds (owner/name)."
+msgstr "مخزنی که انتشارهای آن شامل ساخت‌های میان‌افزار است (مالک/نام)."
+
+msgid "Access token"
+msgstr "توکن دسترسی"
+
+msgid "Only for a private repository: fine-grained token with read-only access to its contents."
+msgstr "فقط برای مخزن خصوصی: توکن با مجوزهای جزئی و دسترسی فقط‌خواندنی به محتوای آن."
+
+msgid "Firmware variant"
+msgstr "نوع میان‌افزار"
+
+msgid "Must match the firmware currently installed. Changing variant is not supported from here."
+msgstr "باید با میان‌افزار نصب‌شده فعلی مطابقت داشته باشد. تغییر نوع از اینجا پشتیبانی نمی‌شود."
+
+msgid "Release candidates"
+msgstr "نسخه‌های نامزد"
+
+msgid "Also offer Dasharo release candidates (-rc) and builds of unreleased branches, for testing. They are not final releases. The final release is offered once it is out, and a release candidate is never offered over it."
+msgstr "نسخه‌های نامزد Dasharo (-rc) و ساخت‌های شاخه‌های منتشرنشده را هم برای آزمایش پیشنهاد بده. این‌ها نسخه نهایی نیستند. نسخه نهایی به محض انتشار پیشنهاد می‌شود و هرگز نسخه نامزد به جای آن پیشنهاد نمی‌شود."
+
+# System status (notification bell)
+msgid "APU coreboot firmware"
+msgstr "میان‌افزار coreboot برای APU"
+
+msgid "New firmware has been written. A cold reset is required to start it."
+msgstr "میان‌افزار جدید نوشته شد. برای راه‌اندازی آن یک راه‌اندازی مجدد سرد لازم است."
+
+msgid "Firmware update failed: %s"
+msgstr "به‌روزرسانی میان‌افزار ناموفق بود: %s"
+
+msgid "Firmware %s is available (installed: %s)."
+msgstr "میان‌افزار %s در دسترس است (نصب‌شده: %s)."
+
+# Firmware page
+msgid "Firmware"
+msgstr "میان‌افزار"
+
+msgid "Board"
+msgstr "برد"
+
+msgid "Installed"
+msgstr "نصب‌شده"
+
+msgid "Latest build"
+msgstr "آخرین ساخت"
+
+msgid "Last check"
+msgstr "آخرین بررسی"
+
+msgid "Status"
+msgstr "وضعیت"
+
+msgid "Check now"
+msgstr "اکنون بررسی کن"
+
+msgid "Update firmware"
+msgstr "به‌روزرسانی میان‌افزار"
+
+msgid "Cold reset"
+msgstr "راه‌اندازی مجدد سرد"
+
+msgid "Not a PC Engines APU"
+msgstr "این یک PC Engines APU نیست"
+
+msgid "new"
+msgstr "جدید"
+
+msgid "Not checked yet."
+msgstr "هنوز بررسی نشده است."
+
+msgid "An update is available."
+msgstr "یک به‌روزرسانی در دسترس است."
+
+msgid "Up to date."
+msgstr "به‌روز است."
+
+msgid "The current firmware will be backed up, then the new one written and verified. Do not cut the power during the update. A cold reset is needed afterwards to start the new firmware. Continue?"
+msgstr "از میان‌افزار فعلی نسخه پشتیبان تهیه می‌شود، سپس میان‌افزار جدید نوشته و تأیید می‌شود. در طول به‌روزرسانی برق را قطع نکنید. پس از آن برای راه‌اندازی میان‌افزار جدید یک راه‌اندازی مجدد سرد لازم است. ادامه می‌دهید؟"
+
+msgid "Update"
+msgstr "به‌روزرسانی"
+
+msgid "Cancel"
+msgstr "لغو"
+
+msgid "Services will be stopped and the board powered off for a few seconds, then it will boot the new firmware. The network will be down for a few minutes. Continue?"
+msgstr "سرویس‌ها متوقف می‌شوند و برد برای چند ثانیه خاموش می‌شود، سپس با میان‌افزار جدید راه‌اندازی می‌شود. شبکه برای چند دقیقه قطع خواهد بود. ادامه می‌دهید؟"
+
+msgid "Restarting. Reload this page in a few minutes."
+msgstr "در حال راه‌اندازی مجدد. چند دقیقه دیگر این صفحه را دوباره بارگذاری کنید."
+
+# Backend messages (apufw.py)
+msgid "The flash is write protected (%s) and the whole image must be written: disable the protection. Nothing was written."
+msgstr "حافظه فلش در برابر نوشتن محافظت شده است (%s) و باید کل ایمیج نوشته شود: محافظت را غیرفعال کنید. چیزی نوشته نشد."
+
+msgid "The flash is write protected (%s) and covers %s: disable the protection. Nothing was written."
+msgstr "حافظه فلش در برابر نوشتن محافظت شده است (%s) و محافظت شامل %s است: محافظت را غیرفعال کنید. چیزی نوشته نشد."
+
+msgid "The flash is write protected (%s): only RW_SECTION_A could be written, but the flash layout differs. Nothing was written."
+msgstr "حافظه فلش در برابر نوشتن محافظت شده است (%s): فقط RW_SECTION_A قابل نوشتن بود، اما چیدمان فلش متفاوت است. چیزی نوشته نشد."
+
+msgid "The flash is write protected (%s): only RW_SECTION_A could be written, but it is signed with other keys than the read-only part (GBB), which would reject it. Nothing was written."
+msgstr "حافظه فلش در برابر نوشتن محافظت شده است (%s): فقط RW_SECTION_A قابل نوشتن بود، اما با کلیدهایی متفاوت از بخش فقط‌خواندنی (GBB) امضا شده و آن بخش آن را رد می‌کند. چیزی نوشته نشد."
+
+msgid "This is not a PC Engines apu2/3/4/6 board."
+msgstr "این یک برد PC Engines apu2/3/4/6 نیست."
+
+msgid "flashrom is not installed."
+msgstr "flashrom نصب نشده است."
+
+msgid "The current firmware version could not be read."
+msgstr "نسخه میان‌افزار فعلی خوانده نشد."
+
+msgid "Switching from UEFI to SeaBIOS must be done manually."
+msgstr "تغییر از UEFI به SeaBIOS باید به صورت دستی انجام شود."
+
+msgid "Switching from SeaBIOS to UEFI must be done manually (OPNsense must boot in UEFI mode)."
+msgstr "تغییر از SeaBIOS به UEFI باید به صورت دستی انجام شود (OPNsense باید در حالت UEFI راه‌اندازی شود)."
+
+msgid "Firmware %s is running."
+msgstr "میان‌افزار %s در حال اجرا است."
+
+msgid "The last operation was interrupted, see the log."
+msgstr "آخرین عملیات قطع شد، گزارش را ببینید."
+
+msgid "No GitHub repository configured."
+msgstr "هیچ مخزن GitHub پیکربندی نشده است."
+
+msgid "Unsupported board."
+msgstr "برد پشتیبانی نمی‌شود."
+
+msgid "GitHub query failed: %s"
+msgstr "درخواست به GitHub ناموفق بود: %s"
+
+msgid "No release for %s (%s) in %s."
+msgstr "هیچ انتشاری برای %s (%s) در %s وجود ندارد."
+
+msgid "Unexpected error: %s"
+msgstr "خطای غیرمنتظره: %s"
+
+msgid "Preparing"
+msgstr "در حال آماده‌سازی"
+
+msgid "No newer firmware is available."
+msgstr "میان‌افزار جدیدتری در دسترس نیست."
+
+msgid "Downloading %s"
+msgstr "در حال دانلود %s"
+
+msgid "Download failed: %s"
+msgstr "دانلود ناموفق بود: %s"
+
+msgid "Checksum mismatch for %s (expected %s, got %s)."
+msgstr "چک‌سام %s مطابقت ندارد (مورد انتظار %s، دریافت‌شده %s)."
+
+msgid "Backing up the current firmware"
+msgstr "در حال تهیه نسخه پشتیبان از میان‌افزار فعلی"
+
+msgid "Backup failed, nothing was written. Is the firmware write protection disabled?"
+msgstr "تهیه نسخه پشتیبان ناموفق بود، چیزی نوشته نشد. آیا محافظت میان‌افزار در برابر نوشتن غیرفعال است؟"
+
+msgid "Writing %s"
+msgstr "در حال نوشتن %s"
+
+msgid "flashrom failed while writing. DO NOT REBOOT: retry the update, or restore %s with flashrom."
+msgstr "flashrom هنگام نوشتن ناموفق بود. راه‌اندازی مجدد نکنید: به‌روزرسانی را دوباره امتحان کنید، یا %s را با flashrom بازیابی کنید."
+
+msgid "flashrom failed before writing, the firmware is unchanged."
+msgstr "flashrom پیش از نوشتن ناموفق بود، میان‌افزار تغییری نکرده است."
+
+msgid "Firmware %s written and verified. A cold reset is required."
+msgstr "میان‌افزار %s نوشته و تأیید شد. یک راه‌اندازی مجدد سرد لازم است."
