@@ -35,6 +35,10 @@ on:
         type: choice
         options: [guilt, am]
         default: guilt
+      pq_ref:
+        description: Dasharo patch queue commit to build (SeaBIOS, empty = the version tag)
+        required: false
+        default: ''
       mirrors:
         description: Where submodules and payloads come from
         type: choice
@@ -133,6 +137,7 @@ jobs:
           VARIANT: ${{ matrix.variant }}
           PATCH_TOOL: ${{ inputs.patch_tool || 'guilt' }}
           MIRRORS: ${{ inputs.mirrors || 'github' }}
+          PQ_REF: ${{ inputs.pq_ref }}
           WORKDIR: ${{ runner.temp }}/apu-fw
           OUTDIR: ${{ runner.temp }}/out
         run: scripts/apu-fw build "${{ matrix.version }}"

@@ -25,6 +25,7 @@ NOTIFY_URL=${NOTIFY_URL:-}            # e.g. https://ntfy.sh/my-topic or a Home 
 KEEP_BUILDS=${KEEP_BUILDS:-5}
 MIRRORS=${MIRRORS:-github}            # github | upstream (review.coreboot.org)
 PATCH_TOOL=${PATCH_TOOL:-guilt}        # guilt (3mdeb's documented procedure) | am
+PQ_REF=${PQ_REF:-}                    # SeaBIOS: patchqueue commit to build (default: the version tag)
 
 PQ_REPO=https://github.com/Dasharo/dasharo-pq
 CB_UPSTREAM=https://github.com/coreboot/coreboot
@@ -120,18 +121,25 @@ build_seabios() {
   local ver=$1 base=${1%-unreleased} src=$WORKDIR/src/seabios-$1
   local cbtag=${base%.*.*}                         # 24.08.00.01 -> 24.08
   local pqref=$base; [[ $ver == *-unreleased ]] && pqref=rel_$base
+  [[ -n $PQ_REF ]] && pqref=$PQ_REF
 
   rm -rf "$src"; mkdir -p "$src"
   log "coreboot $cbtag + patchqueue $pqref"
   git clone -q --branch "$cbtag" "$CB_UPSTREAM" "$src"
-  git clone -q --branch "$pqref" --depth 1 "$PQ_REPO" "$src/.pq"
+  if [[ -n $PQ_REF ]]; then
+    git clone -q "$PQ_REPO" "$src/.pq" && git -C "$src/.pq" checkout -q "$PQ_REF"
+  else
+    git clone -q --branch "$pqref" --depth 1 "$PQ_REPO" "$src/.pq"
+  fi
 
   cd "$src"
   git checkout -q -b patchqueue
-  local pq=.pq
+  local pq=.pq timeless=
+  # TIMELESS as the patchqueue README says: up to 24.08.00.x for every board, not since 26.09
+  grep -q 'export BUILD_TIMELESS=1' .pq/README.md && timeless=1
   # Deterministic history, as in the dasharo-pq README (26.09.00.01 and later): the SBOM in
   # the ROM (coreboot >= 25.x) records the HEAD commit hash, and builds are no longer
-  # TIMELESS (the build date comes from that commit). guilt takes each committer date from
+  # TIMELESS (the build date then comes from that commit). guilt takes each committer date from
   # its patch file's mtime, set to the patchqueue commit date; the committer is the one
   # 3mdeb uses, so HEAD is the commit the official SBOM names (33ea3953 for 26.09.00.01).
   # Authors and author dates come from the patches.
@@ -168,7 +176,7 @@ build_seabios() {
 dasharo-pq      $PQ_REPO $pqref ($(git -C "$pq" rev-parse HEAD))
 patched tree    tag v$base ($(git rev-parse HEAD)), patches applied with $PATCH_TOOL"
   prepare_sdk
-  BUILD_TIMELESS= ./build.sh "seabios_$BOARD"     # as 3mdeb builds apu3/4/6
+  BUILD_TIMELESS=$timeless ./build.sh "seabios_$BOARD"
 }
 
 build_uefi() {
