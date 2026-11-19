@@ -156,7 +156,7 @@ build_seabios() {
     git config user.name apu-fw
     git config user.email apu-fw@localhost
     guilt init >/dev/null 2>&1 || true          # the branch directory already exists
-    GIT_COMMITTER_DATE= guilt push -a >/dev/null || die "guilt push -a failed"
+    GIT_COMMITTER_DATE='' guilt push -a >/dev/null || die "guilt push -a failed"
   else
     # -C1: same context as guilt, 3mdeb's tool (some patches have shifted context).
     # The commit messages differ from guilt's, so does HEAD: not the official build.
