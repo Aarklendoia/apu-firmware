@@ -24,7 +24,7 @@ OUTDIR=${OUTDIR:-$WORKDIR/out}        # built ROMs
 NOTIFY_URL=${NOTIFY_URL:-}            # e.g. https://ntfy.sh/my-topic or a Home Assistant webhook
 KEEP_BUILDS=${KEEP_BUILDS:-5}
 MIRRORS=${MIRRORS:-github}            # github | upstream (review.coreboot.org)
-PATCH_TOOL=${PATCH_TOOL:-am}           # am | guilt (3mdeb's documented procedure)
+PATCH_TOOL=${PATCH_TOOL:-guilt}        # guilt (3mdeb's documented procedure) | am
 
 PQ_REPO=https://github.com/Dasharo/dasharo-pq
 CB_UPSTREAM=https://github.com/coreboot/coreboot
@@ -129,11 +129,15 @@ build_seabios() {
   cd "$src"
   git checkout -q -b patchqueue
   local pq=.pq
-  # The patch commits and the tag get a fixed committer and date (the patchqueue commit
-  # date): the SBOM in the ROM (coreboot >= 25.x) records the HEAD commit hash, which
-  # otherwise changes with the build time. Authors and author dates come from the patches.
+  # Deterministic history, as in the dasharo-pq README (26.09.00.01 and later): the SBOM in
+  # the ROM (coreboot >= 25.x) records the HEAD commit hash, and builds are no longer
+  # TIMELESS (the build date comes from that commit). guilt takes each committer date from
+  # its patch file's mtime, set to the patchqueue commit date; the committer is the one
+  # 3mdeb uses, so HEAD is the commit the official SBOM names (33ea3953 for 26.09.00.01).
+  # Authors and author dates come from the patches.
+  export TZ=UTC GIT_COMMITTER_NAME="Dasharo builder" GIT_COMMITTER_EMAIL="builder@dasharo.com"
   GIT_COMMITTER_DATE=$(git -C .pq log -1 --format=%cI)
-  export GIT_COMMITTER_NAME=apu-fw GIT_COMMITTER_EMAIL=apu-fw@localhost GIT_COMMITTER_DATE
+  touch -d "$GIT_COMMITTER_DATE" .pq/patches/*.patch
   if [[ $PATCH_TOOL == guilt ]]; then
     # the dasharo-pq README procedure, step by step
     need guilt
@@ -144,9 +148,11 @@ build_seabios() {
     git config user.name apu-fw
     git config user.email apu-fw@localhost
     guilt init >/dev/null 2>&1 || true          # the branch directory already exists
-    guilt push -a >/dev/null || die "guilt push -a failed"
+    GIT_COMMITTER_DATE= guilt push -a >/dev/null || die "guilt push -a failed"
   else
-    # -C1: same context as guilt, 3mdeb's tool (some patches have shifted context)
+    # -C1: same context as guilt, 3mdeb's tool (some patches have shifted context).
+    # The commit messages differ from guilt's, so does HEAD: not the official build.
+    export GIT_COMMITTER_DATE
     while read -r p; do
       [[ -z $p || $p == \#* ]] && continue
       git -c user.name=apu-fw -c user.email=apu-fw@localhost am -q -C1 --keep-cr ".pq/patches/$p" \
@@ -154,6 +160,7 @@ build_seabios() {
     done < .pq/patches/series
   fi
   # an annotated tag is required: coreboot uses it for the version string (and the hash)
+  export GIT_COMMITTER_DATE
   git -c user.name=apu-fw -c user.email=apu-fw@localhost tag -a "v$base" -m "v$base"
 
   use_mirrors
@@ -161,7 +168,7 @@ build_seabios() {
 dasharo-pq      $PQ_REPO $pqref ($(git -C "$pq" rev-parse HEAD))
 patched tree    tag v$base ($(git rev-parse HEAD)), patches applied with $PATCH_TOOL"
   prepare_sdk
-  BUILD_TIMELESS=1 ./build.sh "seabios_$BOARD"
+  BUILD_TIMELESS= ./build.sh "seabios_$BOARD"     # as 3mdeb builds apu3/4/6
 }
 
 build_uefi() {
