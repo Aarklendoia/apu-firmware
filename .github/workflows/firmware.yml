@@ -33,8 +33,12 @@ on:
       patch_tool:
         description: How to apply the Dasharo patch queue (SeaBIOS)
         type: choice
-        options: [am, guilt]
-        default: am
+        options: [guilt, am]
+        default: guilt
+      pq_ref:
+        description: Dasharo patch queue commit to build (SeaBIOS, empty = the version tag)
+        required: false
+        default: ''
       mirrors:
         description: Where submodules and payloads come from
         type: choice
@@ -124,15 +128,16 @@ jobs:
       - uses: actions/checkout@v7
 
       - name: Install guilt
-        if: inputs.patch_tool == 'guilt'
+        if: matrix.variant == 'seabios' && inputs.patch_tool != 'am'
         run: sudo apt-get install -y -qq guilt >/dev/null
 
       - name: Build
         env:
           BOARD: ${{ matrix.board }}
           VARIANT: ${{ matrix.variant }}
-          PATCH_TOOL: ${{ inputs.patch_tool || 'am' }}
+          PATCH_TOOL: ${{ inputs.patch_tool || 'guilt' }}
           MIRRORS: ${{ inputs.mirrors || 'github' }}
+          PQ_REF: ${{ inputs.pq_ref }}
           WORKDIR: ${{ runner.temp }}/apu-fw
           OUTDIR: ${{ runner.temp }}/out
         run: scripts/apu-fw build "${{ matrix.version }}"

@@ -50,12 +50,25 @@ without rebuilding:
 scripts/apu-fw verify pcengines_apu4_seabios_v24.08.00.01.rom 24.08.00.01
 ```
 
-Known difference: the v24.08.00.01 SeaBIOS ROM differs from the official build although every
-input matches 3mdeb's SBOM, and the build is deterministic (same hash with `git am` or `guilt`,
-GitHub or upstream mirrors). See [#5](https://github.com/Aarklendoia/apu-firmware/issues/5).
+SeaBIOS builds follow the deterministic procedure of the dasharo-pq README: patches applied with
+`guilt` by the "Dasharo builder" committer, patch dates set to the patch queue commit date, and
+`BUILD_TIMELESS` only where that README asks for it (up to 24.08.00.x). The patched tree then has
+the commit hash that 3mdeb's release notes and SBOM name.
 
-Manual runs of the *Firmware* workflow accept `patch_tool`, `mirrors` and `publish` (off = test
-build kept as a workflow artifact, no release) to investigate such differences.
+Known differences:
+
+- v26.09.00.01: the signed official hash (6 November 2026) is that of a build of patch queue
+  commit `0235cbc`. Built from that commit, the ROM is bit for bit identical to it
+  (`188a8830…`). 3mdeb then added a patch (`3eccce4`, IOMMU INTA# routing and guest AVIC) and
+  moved the `26.09.00.01` tag on 9 November without updating the hash. Builds of the tag match
+  the official SBOM (coreboot revision `33ea3953`) but not that hash.
+- v24.08.00.01: the SeaBIOS ROM differs from the official build although every input matches
+  3mdeb's SBOM, and the build is deterministic. See
+  [#5](https://github.com/Aarklendoia/apu-firmware/issues/5).
+
+Manual runs of the *Firmware* workflow accept `patch_tool`, `pq_ref` (a patch queue commit),
+`mirrors` and `publish` (off = test build kept as a workflow artifact, no release) to investigate
+such differences. Locally: `PQ_REF=0235cbc scripts/apu-fw build 26.09.00.01`.
 
 ## Installing the plugin on OPNsense
 
